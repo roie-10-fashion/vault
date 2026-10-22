@@ -371,7 +371,7 @@ function viewPay(){
   const maxV = Math.max(1, ...list.map(i=>Number(i.net)||0));
   const bars = Array.from({length:12},(_,k)=>{ const its=byM[k+1]||[]; if(!its.length) return `<div class="bar missing"></div>`;
     const n = its.reduce((a,i)=>a+(Number(i.net)||0),0); return `<div class="bar" title="${MONTHS[k]}: ${money(n)}"><i style="height:${n/maxV*100}%"></i></div>`; }).join("");
-  const extra = [["social","ביטוח סוציאלי (社保)"],["housing","קרן דיור (公积金)"]].filter(([k])=>sum(k)>0);
+  const extra = [["social","ביטוח לאומי (社保)"]].filter(([k])=>sum(k)>0);
   const months = Object.keys(byM).length;
   return `
   <div class="top"><div><div class="eyebrow">工资条 · תלושי שכר</div><h1>תלושי שכר</h1></div><button class="btn" data-add="payslip">הוספה</button></div>
@@ -510,8 +510,7 @@ function openForm(kind, item=null, preset={}, sharedFile=null){
       <div class="field"><label for="f_to">עד תאריך</label><input id="f_to" type="date" value="${v("periodTo")}"></div>
       <div class="field"><label for="f_net">נטו 实发 (¥)</label><input id="f_net" class="ltr" inputmode="decimal" value="${v("net")}"></div>
       <div class="field"><label for="f_tax">מס הכנסה 个税 (¥)</label><input id="f_tax" class="ltr" inputmode="decimal" value="${v("tax")}"></div>
-      <div class="field"><label for="f_social">ביטוח סוציאלי 社保 (אם יש)</label><input id="f_social" class="ltr" inputmode="decimal" value="${v("social")}"></div>
-      <div class="field"><label for="f_housing">קרן דיור 公积金 (אם יש)</label><input id="f_housing" class="ltr" inputmode="decimal" value="${v("housing")}"></div>
+      <div class="field full"><label for="f_social">ביטוח לאומי 社保 (אם יש)</label><input id="f_social" class="ltr" inputmode="decimal" value="${v("social")}"></div>
       <div class="field"><label for="f_member">של מי</label><select id="f_member">${memberOpts(sel)}</select></div>
       <div class="field"><label for="f_employer">מעסיק</label><input id="f_employer" list="dl_emp" autocomplete="off" value="${esc(v("employer", item? "" : (remembered("employer","payslip",sel)[0] || remembered("employer","payslip")[0] || "")))}">${dlist("dl_emp", remembered("employer","payslip"))}</div>
       ` : `
@@ -591,7 +590,7 @@ async function readWithAI(kind, blob, el, msg){
     if (!document.body.contains(el)) return;
     const set = (id,val) => { const f=el.querySelector("#"+id); if(f && val!=null && val!=="") f.value=val; };
     if (kind==="payslip") {
-      ["net","tax","social","housing"].forEach(k=>set("f_"+k, j[k])); set("f_employer", j.employer);
+      ["net","tax","social"].forEach(k=>set("f_"+k, j[k])); set("f_employer", j.employer);
       if (j.month>=1&&j.month<=12) set("f_month", j.month); if (j.year>2000) set("f_year", j.year);
       msg("done", `זוהה: ${j.month?MONTHS[j.month-1]:""} ${j.year||""}, נטו ${money(j.net)}. בדוק לפני שמירה.`);
     } else {
@@ -607,7 +606,7 @@ async function saveForm(kind, it, pend, el){
   const data = { ...it, kind, member:gv("f_member"), notes:gv("f_notes"), updatedAt:Date.now() };
   if (kind==="payslip") {
     Object.assign(data, { month:+gv("f_month"), year:+gv("f_year"), net:numOrNull(gv("f_net")), tax:numOrNull(gv("f_tax")),
-      social:numOrNull(gv("f_social")), housing:numOrNull(gv("f_housing")), employer:gv("f_employer"), periodFrom:gv("f_from"), periodTo:gv("f_to"), currency:"CNY" });
+      social:numOrNull(gv("f_social")), employer:gv("f_employer"), periodFrom:gv("f_from"), periodTo:gv("f_to"), currency:"CNY" });
     if (data.periodFrom && data.periodTo && data.periodFrom > data.periodTo) { const e=new Error(); e.userMsg="תאריך ההתחלה מאוחר מתאריך הסיום."; throw e; }
     if (!(data.year>1990 && data.year<2100)) { const e=new Error(); e.userMsg="השנה לא תקינה."; throw e; }
   } else Object.assign(data, { category:gv("f_category"), title:gv("f_title") || CATS[gv("f_category")]?.he, issue:gv("f_issue"), expiry:gv("f_expiry"), number:gv("f_number") });
@@ -629,7 +628,7 @@ function openItem(id){
   const it = S.data.items[id]; if(!it) return;
   const m = member(it.member), isPay = it.kind==="payslip", c = countdown(it.expiry);
   const rows = isPay ? [["חודש", MONTHS[it.month-1]+" "+it.year],...(it.periodFrom||it.periodTo?[["תקופה", `<span class="num">${dmy(it.periodFrom)} – ${dmy(it.periodTo)}</span>`]]:[]),["נטו",money(it.net)],["מס הכנסה",money(it.tax)],
-      ...(it.social?[["ביטוח סוציאלי",money(it.social)]]:[]),...(it.housing?[["קרן דיור",money(it.housing)]]:[]),["מעסיק",esc(it.employer||"—")],["של",esc(m.name)]]
+      ...(it.social?[["ביטוח לאומי",money(it.social)]]:[]),["מעסיק",esc(it.employer||"—")],["של",esc(m.name)]]
     : [["סוג",(CATS[it.category]||CATS.other).he],["של",esc(m.name)],["מספר",it.number?`<span class="num">${esc(it.number)}</span>`:"—"],["הונפק",it.issue?dmy(it.issue):"—"],
        ["בתוקף עד", it.expiry? `${dmy(it.expiry)} ${c?`<span class="st-${c.st}">(${c.days<0?"פג "+c.u:"עוד "+c.n+" "+c.u})</span>`:""}`:"—"]];
   const el = openSheet(`
