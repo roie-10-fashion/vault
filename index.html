@@ -183,6 +183,9 @@ const clientId = () => GOOGLE_CLIENT_ID || ls.get("vault.clientId") || "";
 const items = () => Object.values(S.data.items);
 const members = () => S.data.profile.members;
 const member = id => members().find(m=>m.id===id) || {id, name:"לא משויך", color:"#7a8597", latin:""};
+const nameLang = () => S.data.profile.nameLang || "he";
+const titleCase = t => t.toLowerCase().replace(/(^|[\s-])\S/g, c=>c.toUpperCase());
+const dn = m => (nameLang()==="en" && m.latin) ? titleCase(m.latin) : m.name;   // name shown on screen
 
 const app = document.getElementById("app");
 let toastT;
@@ -331,16 +334,16 @@ async function start(){
 function docRow(it){
   const c = countdown(it.expiry), m = member(it.member), cat = CATS[it.category]||CATS.other;
   return `<button class="row" data-open="${it.id}">
-    <span class="avatar" style="background:${m.color}">${esc(m.name.slice(0,1))}</span>
+    <span class="avatar" style="background:${m.color}">${esc(dn(m).slice(0,1))}</span>
     <span class="main"><span class="t">${esc(it.title || cat.he)}</span>
-      <span class="s">${esc(m.name)} · ${esc(cat.he)}${it.expiry? " · בתוקף עד <span class='num'>"+dmy(it.expiry)+"</span>":""}</span></span>
+      <span class="s">${esc(dn(m))} · ${esc(cat.he)}${it.expiry? " · בתוקף עד <span class='num'>"+dmy(it.expiry)+"</span>":""}</span></span>
     ${c? `<span class="count st-${c.st}"><b>${c.big}</b><span>${esc(c.u)}</span></span>` : `<span class="count muted"><span>ללא תוקף</span></span>`}
   </button>`;
 }
 function payRow(it){
   const m = member(it.member);
   return `<button class="row" data-open="${it.id}"><span class="cat-ic">${icon(PAY_IC)}</span>
-    <span class="main"><span class="t">תלוש ${MONTHS[it.month-1]} ${it.year}</span><span class="s">${esc(m.name)}${it.employer? " · "+esc(it.employer):""}</span></span>
+    <span class="main"><span class="t">תלוש ${MONTHS[it.month-1]} ${it.year}</span><span class="s">${esc(dn(m))}${it.employer? " · "+esc(it.employer):""}</span></span>
     <span class="count"><span class="num" style="font-size:15px">${money(it.net)}</span></span></button>`;
 }
 function viewHome(bodyOnly){
@@ -356,7 +359,7 @@ function viewHome(bodyOnly){
   <div class="section"><div class="sec-head"><h2>פג בקרוב</h2><button class="link" data-go="docs">לכל המסמכים</button></div>
     ${soon.length? `<div class="list">${soon.map(docRow).join("")}</div>` : `<div class="empty">אין מסמכים שפגים ב-6 החודשים הקרובים.</div>`}</div>
   <div class="section"><div class="sec-head"><h2>תלושים חסרים</h2><button class="link" data-go="pay">לכל התלושים</button></div>
-    ${missing.length? `<div class="card"><div><b>${missing.length===1?"חסר תלוש אחד":"חסרים "+missing.length+" תלושים"}</b> <span class="muted small">(${esc(member(pm).name)}, מאז ${MONTHS[START_MONTH-1]} ${START_YEAR})</span></div>
+    ${missing.length? `<div class="card"><div><b>${missing.length===1?"חסר תלוש אחד":"חסרים "+missing.length+" תלושים"}</b> <span class="muted small">(${esc(dn(member(pm)))}, מאז ${MONTHS[START_MONTH-1]} ${START_YEAR})</span></div>
       <div class="chips" style="flex-wrap:wrap">${missing.map(([yy,m])=>`<button class="chip" data-addmonth="${m}" data-addyear="${yy}">${MONTHS[m-1]} ${String(yy).slice(2)}</button>`).join("")}</div></div>`
       : `<div class="empty">כל התלושים מאז ${MONTHS[START_MONTH-1]} ${START_YEAR} נמצאים בכספת.</div>`}</div>
   <div class="section"><h2>נוספו לאחרונה</h2>
@@ -388,7 +391,7 @@ function viewPay(){
   const months = Object.keys(byM).length;
   return `
   <div class="top"><div><div class="eyebrow">工资条 · תלושי שכר</div><h1>תלושי שכר</h1></div><button class="btn" data-add="payslip">הוספה</button></div>
-  ${ms.length>1? `<div class="chips">${ms.map(m=>`<button class="chip" data-paymember="${m.id}" aria-pressed="${m.id===pm}">${esc(m.name)}</button>`).join("")}</div>`:""}
+  ${ms.length>1? `<div class="chips">${ms.map(m=>`<button class="chip" data-paymember="${m.id}" aria-pressed="${m.id===pm}">${esc(dn(m))}</button>`).join("")}</div>`:""}
   <div class="yearbar">
     <button data-year="${S.year+1}" aria-label="שנה הבאה" ${S.year>=maxY?"disabled":""}>›</button>
     <div style="text-align:center"><div class="y">${S.year}</div><div class="muted small">${list.length} תלושים</div></div>
@@ -418,7 +421,7 @@ function viewDocs(bodyOnly){
   if (bodyOnly) return listHtml;
   return `
   <div class="top"><div><div class="eyebrow">אישי, זיהוי, ביטוחים</div><h1>מסמכים</h1></div><button class="btn" data-add="doc">הוספה</button></div>
-  <div class="chips"><button class="chip" data-docmember="all" aria-pressed="${S.docMember==="all"}">כולם</button>${ms.map(m=>`<button class="chip" data-docmember="${m.id}" aria-pressed="${S.docMember===m.id}">${esc(m.name)}</button>`).join("")}</div>
+  <div class="chips"><button class="chip" data-docmember="all" aria-pressed="${S.docMember==="all"}">כולם</button>${ms.map(m=>`<button class="chip" data-docmember="${m.id}" aria-pressed="${S.docMember===m.id}">${esc(dn(m))}</button>`).join("")}</div>
   ${used.length>1? `<div class="chips"><button class="chip" data-doccat="all" aria-pressed="${S.docCat==="all"}">כל הסוגים</button>${used.map(c=>`<button class="chip" data-doccat="${c}" aria-pressed="${S.docCat===c}">${CATS[c].he}</button>`).join("")}</div>`:""}
   ${searchBox("dq","חיפוש מסמך: שם, סוג, מספר…")}
   <div id="docsBody" style="display:flex;flex-direction:column;gap:12px">${listHtml}</div>`;
@@ -427,9 +430,10 @@ function viewFamily(){
   const hasKey = !!ls.get("vault.aiKey");
   return `
   <div class="top"><div><div class="eyebrow">הגדרות</div><h1>משפחה והגדרות</h1></div></div>
-  <div class="section"><h2>בני משפחה</h2>
-    <div class="card">${members().map(m=>`<div class="mrow"><span class="avatar" style="background:${m.color}">${esc(m.name.slice(0,1))}</span>
-      <div class="main"><b>${esc(m.name)}</b><div class="muted small">${m.latin? "בדרכון: "+esc(m.latin):"אין שם באנגלית"} · ${items().filter(x=>x.member===m.id).length} פריטים</div></div>
+  <div class="section"><div class="sec-head"><h2>בני משפחה</h2>
+      <div class="chips"><button class="chip" data-namelang="he" aria-pressed="${nameLang()==="he"}">שמות בעברית</button><button class="chip" data-namelang="en" aria-pressed="${nameLang()==="en"}">שמות באנגלית</button></div></div>
+    <div class="card">${members().map(m=>`<div class="mrow"><span class="avatar" style="background:${m.color}">${esc(dn(m).slice(0,1))}</span>
+      <div class="main"><b>${esc(dn(m))}</b><div class="muted small">${nameLang()==="en"? "בעברית: "+esc(m.name) : m.latin? "באנגלית: "+esc(titleCase(m.latin)) : "<span class='st-soon'>עוד לא הוזן שם באנגלית. לחץ עריכה</span>"} · ${items().filter(x=>x.member===m.id).length} פריטים</div></div>
       <button class="link" data-editmember="${m.id}">עריכה</button></div>`).join("")}
       <button class="btn ghost" data-editmember="">+ הוספת בן/בת משפחה</button></div></div>
   <div class="section"><h2>Google Drive</h2>
@@ -452,6 +456,7 @@ function bindView(){
   $$("[data-docmember]").forEach(b=>b.onclick=()=>{S.docMember=b.dataset.docmember; render();});
   $$("[data-doccat]").forEach(b=>b.onclick=()=>{S.docCat=b.dataset.doccat; render();});
   $$("[data-editmember]").forEach(b=>b.onclick=()=>openMember(b.dataset.editmember));
+  $$("[data-namelang]").forEach(b=>b.onclick=async ()=>{ S.data.profile.nameLang=b.dataset.namelang; S.data.profile.updatedAt=Date.now(); render(); try{ await saveVault(); }catch(e){ toast("השמירה נכשלה"); } });
   bindSearch("q", ()=>{ const b=document.getElementById("homeBody"); b.innerHTML = viewHome(true); bindRows(b); });
   bindSearch("dq", ()=>{ const b=document.getElementById("docsBody"); b.innerHTML = viewDocs(true); bindRows(b); });
   const so=document.getElementById("signout"); if(so) so.onclick=signOut;
@@ -475,7 +480,7 @@ function openSheet(html){ closeSheet(); scrimEl=document.createElement("div"); s
   scrimEl.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet); return scrimEl; }
 function closeSheet(){ if(scrimEl){ scrimEl.remove(); scrimEl=null; document.body.style.overflow=""; } }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
-const memberOpts = sel => members().map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${esc(m.name)}</option>`).join("");
+const memberOpts = sel => members().map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${esc(dn(m))}</option>`).join("");
 
 /* values typed before, so they don't need typing again */
 function remembered(field, kind, memberId){
@@ -608,7 +613,7 @@ async function readWithAI(kind, blob, el, msg){
       msg("done", `זוהה: ${j.month?MONTHS[j.month-1]:""} ${j.year||""}, נטו ${money(j.net)}. בדוק לפני שמירה.`);
     } else {
       if (CATS[j.category]) set("f_category", j.category); set("f_title", j.title); set("f_number", j.number); set("f_issue", j.issue); set("f_expiry", j.expiry);
-      let who=""; if (j.holder) { const h=j.holder.toUpperCase(); const m=members().find(m=>m.latin && m.latin.split(/\s+/).every(p=>h.includes(p))); if(m){ set("f_member", m.id); who=" של "+m.name; } else who=` (${j.holder})`; }
+      let who=""; if (j.holder) { const h=j.holder.toUpperCase(); const m=members().find(m=>m.latin && m.latin.split(/\s+/).every(p=>h.includes(p))); if(m){ set("f_member", m.id); who=" של "+dn(m); } else who=` (${j.holder})`; }
       msg("done", `זוהה: ${j.title||"מסמך"}${who}${j.expiry?", בתוקף עד "+dmy(j.expiry):""}. בדוק לפני שמירה.`);
     }
   } catch(e){ if (document.body.contains(el)) msg("err","לא הצלחתי לקרוא אוטומטית. מלא את הפרטים ידנית."); }
@@ -641,8 +646,8 @@ function openItem(id){
   const it = S.data.items[id]; if(!it) return;
   const m = member(it.member), isPay = it.kind==="payslip", c = countdown(it.expiry);
   const rows = isPay ? [["חודש", MONTHS[it.month-1]+" "+it.year],...(it.periodFrom||it.periodTo?[["תקופה", `<span class="num">${dmy(it.periodFrom)} – ${dmy(it.periodTo)}</span>`]]:[]),["נטו",money(it.net)],["מס הכנסה",money(it.tax)],
-      ...(it.social?[["ביטוח לאומי",money(it.social)]]:[]),["מעסיק",esc(it.employer||"—")],["של",esc(m.name)]]
-    : [["סוג",(CATS[it.category]||CATS.other).he],["של",esc(m.name)],["מספר",it.number?`<span class="num">${esc(it.number)}</span>`:"—"],["הונפק",it.issue?dmy(it.issue):"—"],
+      ...(it.social?[["ביטוח לאומי",money(it.social)]]:[]),["מעסיק",esc(it.employer||"—")],["של",esc(dn(m))]]
+    : [["סוג",(CATS[it.category]||CATS.other).he],["של",esc(dn(m))],["מספר",it.number?`<span class="num">${esc(it.number)}</span>`:"—"],["הונפק",it.issue?dmy(it.issue):"—"],
        ["בתוקף עד", it.expiry? `${dmy(it.expiry)} ${c?`<span class="st-${c.st}">(${c.days<0?"פג "+c.u:"עוד "+c.n+" "+c.u})</span>`:""}`:"—"]];
   const el = openSheet(`
     <div class="sheet-head"><h2>${isPay? "תלוש "+MONTHS[it.month-1]+" "+it.year : esc(it.title)}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
@@ -675,12 +680,12 @@ function openMember(id){
   const el = openSheet(`
     <div class="sheet-head"><h2>${m.id? "עריכת "+esc(m.name) : "בן/בת משפחה חדש/ה"}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
     <div class="form">
-      <div class="field full"><label for="m_name">שם</label><input id="m_name" value="${esc(m.name)}"></div>
-      <div class="field full"><label for="m_latin">שם באנגלית כמו בדרכון</label><input id="m_latin" class="ltr" value="${esc(m.latin)}" placeholder="ROIE COHEN"></div>
+      <div class="field full"><label for="m_name">שם בעברית</label><input id="m_name" value="${esc(m.name)}"></div>
+      <div class="field full"><label for="m_latin">שם באנגלית (כמו בדרכון)</label><input id="m_latin" class="ltr" value="${esc(m.latin)}" placeholder="ROIE COHEN" style="text-transform:uppercase"></div>
       <div class="field full"><label>צבע</label><div class="chips">${COLORS.map(c=>`<button type="button" class="chip" data-col="${c}" aria-pressed="${c===m.color}" style="background:${c};border-color:${c};width:34px;height:34px;padding:0" aria-label="צבע"></button>`).join("")}</div></div>
     </div>
     <div class="actions"><button class="btn" id="mSave">שמירה</button>${m.id && members().length>1 && !used? `<button class="btn danger" id="mDel">הסרה</button>`:""}</div>
-    ${used&&m.id? `<div class="muted small">יש ${used} פריטים ששייכים ל${esc(m.name)}, לכן אי אפשר להסיר.</div>`:""}`);
+    ${used&&m.id? `<div class="muted small">יש ${used} פריטים ששייכים ל${esc(dn(m))}, לכן אי אפשר להסיר.</div>`:""}`);
   let col = m.color;
   el.querySelectorAll("[data-col]").forEach(b=>b.onclick=()=>{ col=b.dataset.col; el.querySelectorAll("[data-col]").forEach(x=>{x.setAttribute("aria-pressed", x===b); x.style.outline = x===b? "3px solid var(--ink)":"";}); });
   el.querySelector("#mSave").onclick = async ()=>{
