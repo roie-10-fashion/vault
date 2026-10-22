@@ -514,7 +514,7 @@ const VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value
 function enhanceDates(root){
   root.querySelectorAll('input[type="date"]').forEach(inp=>{
     const wrap = document.createElement("div"); wrap.className = "datebox";
-    const txt = document.createElement("input"); txt.className="ltr"; txt.inputMode="numeric"; txt.autocomplete="off"; txt.placeholder="יי/חח/שששש"; txt.id = inp.id+"_txt";
+    const txt = document.createElement("input"); txt.className="ltr"; txt.inputMode="numeric"; txt.autocomplete="off"; txt.placeholder="DD/MM/YYYY"; txt.id = inp.id+"_txt";
     const btn = document.createElement("button"); btn.type="button"; btn.className="calbtn"; btn.setAttribute("aria-label","לוח שנה");
     btn.innerHTML = icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',18);
     inp.parentNode.insertBefore(wrap, inp); wrap.append(txt, btn, inp); inp.classList.add("native-date"); inp.tabIndex = -1;
