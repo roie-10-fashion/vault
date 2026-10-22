@@ -123,7 +123,7 @@ mark{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 1px}
 .field input.ltr{direction:ltr;text-align:right;font-family:var(--f-num)}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
 .actions .btn{flex:1}
-.big-preview{width:100%;border-radius:12px;border:1px solid var(--line);background:#fff}
+.big-preview{display:block;width:100%;max-height:340px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:zoom-in}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -634,12 +634,12 @@ function openItem(id){
        ["בתוקף עד", it.expiry? `${dmy(it.expiry)} ${c?`<span class="st-${c.st}">(${c.days<0?"פג "+c.u:"עוד "+c.n+" "+c.u})</span>`:""}`:"—"]];
   const el = openSheet(`
     <div class="sheet-head"><h2>${isPay? "תלוש "+MONTHS[it.month-1]+" "+it.year : esc(it.title)}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
-    <div id="fileBox">${it.fileId? `<div class="empty">טוען את הקובץ מה-Drive…</div>` : `<div class="empty">אין קובץ מצורף. אפשר להוסיף דרך עריכה.</div>`}</div>
     <div class="stats">${rows.map(([l,v])=>`<div class="stat"><div class="l">${l}</div><div style="font-weight:600">${v}</div></div>`).join("")}</div>
     ${it.notes? `<div class="card small">${esc(it.notes)}</div>`:""}
     <div class="actions"><button class="btn" id="editBtn">עריכה</button><button class="btn danger" id="delBtn">מחיקה</button></div>
     <div id="delConfirm" class="card" hidden><b>למחוק?</b><div class="muted small">הפריט יימחק מהכספת והקובץ יעבור לפח של Drive (אפשר לשחזר משם 30 יום).</div>
-      <div class="actions"><button class="btn danger" id="delYes">כן, למחוק</button><button class="btn ghost" id="delNo">ביטול</button></div></div>`);
+      <div class="actions"><button class="btn danger" id="delYes">כן, למחוק</button><button class="btn ghost" id="delNo">ביטול</button></div></div>
+    <div id="fileBox">${it.fileId? `<div class="empty">טוען את הקובץ מה-Drive…</div>` : `<div class="empty">אין קובץ מצורף. אפשר להוסיף דרך עריכה.</div>`}</div>`);
   el.querySelector("#editBtn").onclick = ()=>openForm(it.kind, it);
   el.querySelector("#delBtn").onclick = ()=>{ el.querySelector("#delConfirm").hidden=false; };
   el.querySelector("#delNo").onclick = ()=>{ el.querySelector("#delConfirm").hidden=true; };
@@ -652,7 +652,7 @@ function openItem(id){
       let pic = url;
       if ((it.mime||blob.type)==="application/pdf") { pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
         const pdf = await pdfjsLib.getDocument({data: await blob.arrayBuffer()}).promise; pic = URL.createObjectURL(await renderPdfPage(pdf,1,1800)); }
-      box.innerHTML = `<img class="big-preview" src="${pic}" alt="הקובץ"><a class="btn ghost" style="display:block;margin-top:10px" href="${url}" target="_blank" rel="noopener">פתיחה במסך מלא</a>`;
+      box.innerHTML = `<a href="${url}" target="_blank" rel="noopener" title="פתיחה במסך מלא"><img class="big-preview" src="${pic}" alt="הקובץ"></a><a class="btn ghost" style="display:block;margin-top:10px" href="${url}" target="_blank" rel="noopener">פתיחה במסך מלא</a>`;
     } catch(e){ box.innerHTML = `<div class="empty">לא הצלחתי לטעון את הקובץ מה-Drive. בדוק VPN.</div>`; }
   })();
 }
