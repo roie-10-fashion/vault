@@ -155,6 +155,7 @@ const GOOGLE_CLIENT_ID = "425816596854-narl7a4c4r4qous1i2fliqjj72j7986u.apps.goo
 
 (() => {
 const START_YEAR = 2025, START_MONTH = 9;
+const WARN_DAYS = 183;   // התראה חצי שנה לפני שמסמך פג
 const ROOT_NAME = "הכספת שלי", DATA_NAME = "vault-data.json";
 const SCOPE = "https://www.googleapis.com/auth/drive.file";
 const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
@@ -271,7 +272,7 @@ function countdown(dateStr){
   const days = Math.round((d - today())/864e5);
   if (days < 0) { const a=-days; const u = a<=60? a+" ימים" : a<730? Math.round(a/30.4)+" חודשים" : Math.floor(a/365)+" שנים"; return {days, big:"פג", u:"לפני "+u, st:"bad"}; }
   let n,u; if (days<=60){n=days;u=days===1?"יום":"ימים"} else if(days<730){n=Math.round(days/30.4);u="חודשים"} else {n=Math.floor(days/365);u="שנים"}
-  return {days, n, big:String(n), u, st: days<=90? "soon":"ok"};
+  return {days, n, big:String(n), u, st: days<=WARN_DAYS? "soon":"ok"};
 }
 const dmy = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${+d}/${+m}/${y}`; };
 const numOrNull = s => { s=String(s||"").replace(/[,\s¥]/g,""); if(!s) return null; const n=Number(s); return isFinite(n)? n : null; };
@@ -332,7 +333,7 @@ function payRow(it){
 }
 function viewHome(bodyOnly){
   const all = items(), docs = all.filter(i=>i.kind==="doc");
-  const soon = docs.filter(i=>{const c=countdown(i.expiry); return c && c.days<=120;}).sort((a,b)=>a.expiry.localeCompare(b.expiry));
+  const soon = docs.filter(i=>{const c=countdown(i.expiry); return c && c.days<=WARN_DAYS;}).sort((a,b)=>a.expiry.localeCompare(b.expiry));
   const now = new Date(), y = now.getFullYear(), curM = now.getMonth()+1;
   const pm = S.payMember || members()[0]?.id;
   const have = new Set(all.filter(i=>i.kind==="payslip"&&i.member===pm).map(i=>i.year+"-"+i.month));
@@ -341,7 +342,7 @@ function viewHome(bodyOnly){
   const h = now.getHours(), greet = h<12?"בוקר טוב":h<18?"צהריים טובים":"ערב טוב";
   const sections = `
   <div class="section"><div class="sec-head"><h2>פג בקרוב</h2><button class="link" data-go="docs">לכל המסמכים</button></div>
-    ${soon.length? `<div class="list">${soon.map(docRow).join("")}</div>` : `<div class="empty">אין מסמכים שפגים ב-4 החודשים הקרובים.</div>`}</div>
+    ${soon.length? `<div class="list">${soon.map(docRow).join("")}</div>` : `<div class="empty">אין מסמכים שפגים ב-6 החודשים הקרובים.</div>`}</div>
   <div class="section"><div class="sec-head"><h2>תלושים חסרים</h2><button class="link" data-go="pay">לכל התלושים</button></div>
     ${missing.length? `<div class="card"><div><b>${missing.length===1?"חסר תלוש אחד":"חסרים "+missing.length+" תלושים"}</b> <span class="muted small">(${esc(member(pm).name)}, מאז ${MONTHS[START_MONTH-1]} ${START_YEAR})</span></div>
       <div class="chips" style="flex-wrap:wrap">${missing.map(([yy,m])=>`<button class="chip" data-addmonth="${m}" data-addyear="${yy}">${MONTHS[m-1]} ${String(yy).slice(2)}</button>`).join("")}</div></div>`
