@@ -98,6 +98,7 @@ nav.tabs button[aria-current="page"]{color:#fff}
 nav.tabs button[aria-current="page"] svg{color:var(--accent)}
 .scrim{position:fixed;inset:0;background:rgba(10,16,26,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--bg);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px max(16px,env(safe-area-inset-left,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.sheet>*{flex-shrink:0}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .x{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:18px}
 .drop{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -208,7 +209,14 @@ function signOut(){ if (S.token && window.google) google.accounts.oauth2.revoke(
 class NeedAuth extends Error {}
 async function g(url, opts={}){
   if (!S.token || Date.now() > S.tokenExp) { S.needAuth=true; render(); throw new NeedAuth("auth"); }
-  const r = await fetch(url, {...opts, headers:{...(opts.headers||{}), Authorization:"Bearer "+S.token}});
+  const isRead = !opts.method || opts.method==="GET";
+  const once = async () => {
+    const ac = new AbortController(); const t = setTimeout(()=>ac.abort(), isRead? 25000 : 120000);
+    try { return await fetch(url, {...opts, signal: ac.signal, headers:{...(opts.headers||{}), Authorization:"Bearer "+S.token}}); }
+    catch(e){ throw new Error(e.name==="AbortError"? "timeout" : "network"); }
+    finally { clearTimeout(t); }
+  };
+  let r; try { r = await once(); } catch(e){ if (!isRead) throw e; r = await once(); }
   if (r.status===401) { S.token=null; ls.set("vault.token",null); S.needAuth=true; render(); throw new NeedAuth("auth"); }
   if (!r.ok) { let m=""; try{ m=(await r.json()).error?.message||"" }catch(e){} throw new Error("Drive "+r.status+(m?": "+m:"")); }
   return r;
@@ -287,7 +295,7 @@ function render(){
     app.innerHTML = `<div class="center"><div class="seal">כ</div><h1>הכספת שלי</h1>
       <p class="muted" style="max-width:34ch;margin:0">תלושי שכר, דרכונים ומסמכים של המשפחה. הכול נשמר ב-Google Drive שלך בלבד.</p>
       ${S.error? `<div class="banner">${esc(S.error)}</div>`:""}
-      <button class="btn" id="signin" style="min-width:220px">כניסה עם Google</button>
+      <button class="btn" id="signin" style="min-width:220px">${S.error? "לנסות שוב" : "כניסה עם Google"}</button>
       <p class="muted small" style="margin:0">בסין צריך VPN פעיל.</p></div>`;
     document.getElementById("signin").onclick = start; return;
   }
@@ -311,9 +319,13 @@ async function start(){
     S.error=null;
     if (!tokenClient) await initAuth();
     if (!S.token || Date.now()>S.tokenExp) await signIn();
-    app.innerHTML = `<div class="center"><div class="seal">כ</div><p class="muted">טוען מה-Drive…</p></div>`;
-    await loadVault(); S.ready=true; S.needAuth=false; render(); handleShared();
-  } catch(e){ S.error = e?.type==="popup_closed"? "חלון ההתחברות נסגר." : (e instanceof NeedAuth)? null : "לא הצלחתי להתחבר ל-Drive. בדוק שה-VPN פעיל ונסה שוב."; S.ready=false; render(); }
+    app.innerHTML = `<div class="center"><div class="seal">כ</div><p class="muted">טוען מה-Drive…</p><p class="muted small" id="slow" hidden>לוקח יותר זמן מהרגיל. ה-VPN אולי איטי כרגע.</p></div>`;
+    const slowT = setTimeout(()=>{ const x=document.getElementById("slow"); if(x) x.hidden=false; }, 8000);
+    try { await loadVault(); } finally { clearTimeout(slowT); }
+    S.ready=true; S.needAuth=false; render(); handleShared();
+  } catch(e){ S.error = e?.type==="popup_closed"? "חלון ההתחברות נסגר." : (e instanceof NeedAuth)? null
+      : e?.message==="timeout"? "Drive לא ענה בזמן (כנראה ה-VPN איטי). לחץ שוב על הכפתור כדי לנסות."
+      : "לא הצלחתי להתחבר ל-Drive" + (e?.message? " ("+e.message+")" : "") + ". לחץ שוב כדי לנסות."; S.ready=false; render(); }
 }
 
 function docRow(it){
