@@ -122,6 +122,10 @@ mark{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 1px}
 .field label{font-size:13px;color:var(--muted);font-weight:600}
 .field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;width:100%}
 .field input.ltr{direction:ltr;text-align:right;font-family:var(--f-num)}
+.datebox{position:relative;display:flex;gap:6px;align-items:stretch}
+.datebox input.ltr{flex:1;min-width:0}
+.calbtn{flex:none;width:44px;border:1px solid var(--line);background:var(--surface);border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+.native-date{position:absolute!important;left:0;bottom:0;width:1px!important;height:1px;opacity:0;pointer-events:none;padding:0!important;border:0!important}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
 .actions .btn{flex:1}
 .big-preview{display:block;width:100%;max-height:340px;object-fit:contain;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:zoom-in}
@@ -505,6 +509,32 @@ function suggestPeriod(y, m, memberId){
   return [iso(new Date(y, m-1, 1)), iso(new Date(y, m, 0))];
 }
 
+/* date fields always shown as day/month/year, whatever the phone's language */
+const VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+function enhanceDates(root){
+  root.querySelectorAll('input[type="date"]').forEach(inp=>{
+    const wrap = document.createElement("div"); wrap.className = "datebox";
+    const txt = document.createElement("input"); txt.className="ltr"; txt.inputMode="numeric"; txt.autocomplete="off"; txt.placeholder="יי/חח/שששש"; txt.id = inp.id+"_txt";
+    const btn = document.createElement("button"); btn.type="button"; btn.className="calbtn"; btn.setAttribute("aria-label","לוח שנה");
+    btn.innerHTML = icon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',18);
+    inp.parentNode.insertBefore(wrap, inp); wrap.append(txt, btn, inp); inp.classList.add("native-date"); inp.tabIndex = -1;
+    const lab = wrap.closest(".field")?.querySelector("label"); if (lab) lab.htmlFor = txt.id;
+    const show = () => { const v = VALUE.get.call(inp); txt.value = v ? v.split("-").reverse().join("/") : ""; };
+    Object.defineProperty(inp, "value", { configurable:true, get(){ return VALUE.get.call(inp); }, set(v){ VALUE.set.call(inp, v); show(); } });
+    show();
+    btn.onclick = () => { try { inp.showPicker(); } catch(e){ inp.focus(); inp.click(); } };
+    inp.addEventListener("input", show); inp.addEventListener("change", show);
+    txt.addEventListener("input", () => {
+      const d = txt.value.replace(/\D/g,"").slice(0,8);
+      txt.value = d.length>4 ? d.slice(0,2)+"/"+d.slice(2,4)+"/"+d.slice(4) : d.length>2 ? d.slice(0,2)+"/"+d.slice(2) : d;
+      if (d.length===8) { const iso = `${d.slice(4)}-${d.slice(2,4)}-${d.slice(0,2)}`, t = new Date(iso+"T00:00:00");
+        if (!isNaN(t) && iso===`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`) { VALUE.set.call(inp, iso); inp.dispatchEvent(new Event("input")); } }
+      else if (!d.length) { VALUE.set.call(inp, ""); inp.dispatchEvent(new Event("input")); }
+    });
+    txt.addEventListener("blur", show);
+  });
+}
+
 function openForm(kind, item=null, preset={}, sharedFile=null){
   const isPay = kind==="payslip", it = item || {}, now = new Date();
   const v = (k,d="") => it[k] ?? preset[k] ?? d;
@@ -542,6 +572,7 @@ function openForm(kind, item=null, preset={}, sharedFile=null){
     </form>
     <div class="actions"><button class="btn" id="saveBtn">שמירה</button><button class="btn ghost" data-close>ביטול</button></div>`);
   const $ = id => el.querySelector("#"+id);
+  enhanceDates(el);
   const aiMsg=(cls,t)=>{ const a=$("ai"); a.hidden=false; a.className="ai "+cls; a.textContent=t; };
   if (isPay) {
     let touched = !!(it.periodFrom || it.periodTo);
