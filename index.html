@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#16233a">
+<title>הכספת שלי</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js" defer></script>
+<style>
+/* Layout: one narrow column like a ring binder, bottom tab bar, sheets slide up for add/edit. Accent = red of a Chinese company seal (公章). */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --surface-2:#f6f8fb; --line:#dde3ea;
+  --ink:#16233a; --muted:#5d6a7e; --accent:#b8322a; --accent-soft:#f8e3e0;
+  --ok:#2e7d4f; --ok-soft:#e1f2e7; --warn:#a96a00; --warn-soft:#fbefd6; --bad:#b8322a; --bad-soft:#f8e3e0;
+  --nav:#16233a; --nav-ink:#c9d3e2; --bar:#c7d0dc;
+  --f-display:"Frank Ruhl Libre","David",serif; --f-body:"Assistant","Segoe UI",Arial,sans-serif; --f-num:"IBM Plex Mono",ui-monospace,monospace;
+  --r:14px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f1622; --surface:#18212f; --surface-2:#1d2839; --line:#2a3649;
+  --ink:#e8edf5; --muted:#97a3b6; --accent:#e5675d; --accent-soft:#3a1f1f;
+  --ok:#6cc391; --ok-soft:#183026; --warn:#e3a944; --warn-soft:#352914; --bad:#ef7468; --bad-soft:#3a1f1f;
+  --nav:#0a1019; --nav-ink:#8f9bb0; --bar:#34425a; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{background:var(--bg);margin:0}
+body{color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:env(safe-area-inset-top,0px) calc(84px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+img{max-width:100%}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px;padding-top:22px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;font-weight:700}
+h1{font-size:30px;line-height:1.15} h2{font-size:21px}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.eyebrow{font-size:12.5px;letter-spacing:.06em;color:var(--accent);font-weight:700}
+.section{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.link{background:none;border:0;color:var(--accent);font-weight:600;padding:4px 0}
+.banner{background:var(--warn-soft);border-radius:var(--r);padding:12px 14px;font-size:14.5px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:13px 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:right;width:100%}
+.row:last-child{border-bottom:0} .row:hover{background:var(--surface-2)}
+.row .main{min-width:0;display:flex;flex-direction:column}
+.row .t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff;flex:none}
+.cat-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);flex:none}
+.count{text-align:center;min-width:56px}
+.count b{display:block;font-family:var(--f-num);font-size:22px;line-height:1.1}
+.count span{font-size:12px}
+.st-ok{color:var(--ok)} .st-soon{color:var(--warn)} .st-bad{color:var(--bad)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:22px 16px;text-align:center;color:var(--muted)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;white-space:nowrap;font-weight:600;font-size:14.5px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:var(--accent);color:#fff;text-align:center;text-decoration:none}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn:disabled{opacity:.55;cursor:default}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick .btn{display:flex;align-items:center;justify-content:center;gap:8px}
+.yearbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.yearbar .y{font-family:var(--f-num);font-size:26px}
+.yearbar button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface)}
+.yearbar button:disabled{opacity:.35;cursor:default}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stat{background:var(--surface);padding:12px 14px;min-width:0}
+.stat:last-child:nth-child(odd){grid-column:1/-1}
+.stat .l{font-size:12.5px;color:var(--muted);letter-spacing:.03em}
+.stat .v{font-family:var(--f-num);font-size:19px;font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 12px 10px}
+.bars{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:130px}
+.bar{position:relative;height:100%;display:flex;align-items:flex-end;justify-content:center}
+.bar i{display:block;width:100%;max-width:26px;border-radius:5px 5px 2px 2px;background:var(--accent);position:absolute;bottom:0}
+.bar.missing::after{content:"";width:100%;max-width:26px;height:3px;border-radius:2px;background:var(--line)}
+.blabels{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-top:6px;font-size:11.5px;color:var(--muted);text-align:center}
+.months{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.month{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;text-align:right;display:flex;flex-direction:column;gap:2px;min-height:78px}
+.month .mn{font-weight:700}
+.month .mv{font-family:var(--f-num);font-size:15px;direction:ltr;text-align:right}
+.month.miss{border-style:dashed;background:transparent;color:var(--muted)}
+.month.future{opacity:.5}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--nav);padding:8px max(16px,env(safe-area-inset-left,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px))}
+nav.tabs .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav.tabs button{background:none;border:0;color:var(--nav-ink);display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;padding:6px 0;font-weight:600}
+nav.tabs button[aria-current="page"]{color:#fff}
+nav.tabs button[aria-current="page"] svg{color:var(--accent)}
+.scrim{position:fixed;inset:0;background:rgba(10,16,26,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px max(16px,env(safe-area-inset-left,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.x{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:18px}
+.drop{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drop label{display:flex;align-items:center;justify-content:center;gap:8px;border:1px dashed var(--line);background:var(--surface);border-radius:12px;padding:14px 8px;font-weight:600;cursor:pointer;text-align:center;position:relative}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.preview{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.preview img{width:84px;height:84px;object-fit:cover;border-radius:8px;background:var(--surface-2)}
+.preview .main{min-width:0}
+.ai{font-size:14px;border-radius:10px;padding:9px 12px;background:var(--surface-2)}
+.ai.busy{color:var(--muted)} .ai.done{background:var(--ok-soft)} .ai.err{background:var(--bad-soft)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:13px;color:var(--muted);font-weight:600}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;width:100%}
+.field input.ltr{direction:ltr;text-align:right;font-family:var(--f-num)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.actions .btn{flex:1}
+.big-preview{width:100%;border-radius:12px;border:1px solid var(--line);background:#fff}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
+.mrow{display:flex;align-items:center;gap:10px}
+.mrow .main{flex:1;min-width:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;z-index:60;font-weight:600;font-size:14.5px;max-width:90vw}
+.center{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
+.seal{width:84px;height:84px;border:3px solid var(--accent);border-radius:16px;display:grid;place-items:center;color:var(--accent);font-family:var(--f-display);font-size:30px;font-weight:700;transform:rotate(-6deg)}
+@media (max-width:420px){.months{grid-template-columns:repeat(2,1fr)} h1{font-size:26px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="empty">טוען…</div></div>
+
+<nav class="tabs" aria-label="ניווט" id="nav" hidden>
+  <div class="in">
+    <button data-tab="home"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>בית</button>
+    <button data-tab="pay"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>תלושים</button>
+    <button data-tab="docs"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>מסמכים</button>
+    <button data-tab="family"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.8.3 5 2.6 5 5.8"/></svg>הגדרות</button>
+  </div>
+</nav>
+
+<script>
+/* ============ הגדרה אחת בלבד ============ */
+const GOOGLE_CLIENT_ID = "";   // ימולא אחרי ההגדרה ב-Google Cloud
+/* ======================================== */
+
+(() => {
+const START_YEAR = 2025, START_MONTH = 9;
+const ROOT_NAME = "הכספת שלי", DATA_NAME = "vault-data.json";
+const SCOPE = "https://www.googleapis.com/auth/drive.file";
+const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const MSHORT = ["ינו","פבר","מרץ","אפר","מאי","יונ","יול","אוג","ספט","אוק","נוב","דצמ"];
+const CATS = {
+  passport:{he:"דרכון"}, visa:{he:"ויזה"}, residence:{he:"אשרת שהייה (居留许可)"}, id:{he:"תעודת זהות"},
+  license:{he:"רישיון נהיגה"}, insurance:{he:"ביטוח"}, contract:{he:"חוזה / הסכם"}, other:{he:"אחר"}
+};
+const COLORS = ["#3d6fb6","#b8322a","#2e7d4f","#8a5a9e","#c07a12","#2c8a92"];
+const fmt = new Intl.NumberFormat("he-IL",{maximumFractionDigits:2});
+const money = v => (v==null||v==="")? "—" : "¥" + fmt.format(Number(v));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const icon = (inner, s=20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const PAY_IC = '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const today = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+const ls = { get(k){ try{return localStorage.getItem(k)}catch(e){return null} }, set(k,v){ try{ v==null? localStorage.removeItem(k) : localStorage.setItem(k,v)}catch(e){} } };
+
+const S = { token:null, tokenExp:0, rootId:null, dataId:null,
+  data:{ profile:{ members:[{id:"me",name:"רועי",latin:"",color:COLORS[0]}], folders:{} }, items:{}, deleted:{} },
+  ready:false, needAuth:false, error:null, tab: ls.get("vault.tab") || "home", year:new Date().getFullYear(),
+  payMember:null, docMember:"all", docCat:"all" };
+const clientId = () => GOOGLE_CLIENT_ID || ls.get("vault.clientId") || "";
+const items = () => Object.values(S.data.items);
+const members = () => S.data.profile.members;
+const member = id => members().find(m=>m.id===id) || {id, name:"לא משויך", color:"#7a8597", latin:""};
+
+const app = document.getElementById("app");
+let toastT;
+function toast(msg){ let el=document.querySelector(".toast"); if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el);} el.textContent=msg; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,3000); }
+
+/* ================= Google sign-in ================= */
+let tokenClient = null, tokenWaiters = [];
+{ const t = ls.get("vault.token"), e = +ls.get("vault.tokenExp"); if (t && e > Date.now()+60000) { S.token=t; S.tokenExp=e; } }
+function gisReady(){ return new Promise(res=>{ const ch=()=> window.google?.accounts?.oauth2 ? res() : setTimeout(ch,100); ch(); }); }
+async function initAuth(){
+  await gisReady();
+  tokenClient = google.accounts.oauth2.initTokenClient({ client_id: clientId(), scope: SCOPE,
+    callback: r => {
+      if (r.error) { tokenWaiters.splice(0).forEach(w=>w.rej(r)); return; }
+      S.token = r.access_token; S.tokenExp = Date.now() + (r.expires_in-60)*1000;
+      ls.set("vault.token", S.token); ls.set("vault.tokenExp", String(S.tokenExp)); ls.set("vault.signedIn","1");
+      tokenWaiters.splice(0).forEach(w=>w.res());
+    },
+    error_callback: e => tokenWaiters.splice(0).forEach(w=>w.rej(e)) });
+}
+function signIn(){ return new Promise((res,rej)=>{ tokenWaiters.push({res,rej}); tokenClient.requestAccessToken({prompt: ls.get("vault.signedIn")? "" : "consent"}); }); }
+function signOut(){ if (S.token && window.google) google.accounts.oauth2.revoke(S.token, ()=>{}); S.token=null; ls.set("vault.token",null); ls.set("vault.tokenExp",null); ls.set("vault.signedIn",null); location.reload(); }
+
+class NeedAuth extends Error {}
+async function g(url, opts={}){
+  if (!S.token || Date.now() > S.tokenExp) { S.needAuth=true; render(); throw new NeedAuth("auth"); }
+  const r = await fetch(url, {...opts, headers:{...(opts.headers||{}), Authorization:"Bearer "+S.token}});
+  if (r.status===401) { S.token=null; ls.set("vault.token",null); S.needAuth=true; render(); throw new NeedAuth("auth"); }
+  if (!r.ok) { let m=""; try{ m=(await r.json()).error?.message||"" }catch(e){} throw new Error("Drive "+r.status+(m?": "+m:"")); }
+  return r;
+}
+const API = "https://www.googleapis.com/drive/v3/files", UP = "https://www.googleapis.com/upload/drive/v3/files";
+async function driveFind(q){ const r = await g(API+"?q="+encodeURIComponent(q)+"&fields=files(id,name,parents)&spaces=drive"); return (await r.json()).files||[]; }
+async function driveFolder(name, parent){ const r = await g(API+"?fields=id", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({name, mimeType:"application/vnd.google-apps.folder", parents: parent?[parent]:undefined})}); return (await r.json()).id; }
+async function driveUpload(blob, name, parent){
+  const meta = {name, parents:[parent]};
+  const fd = new FormData(); fd.append("metadata", new Blob([JSON.stringify(meta)],{type:"application/json"})); fd.append("file", blob);
+  const r = await g(UP+"?uploadType=multipart&fields=id,name,size", {method:"POST", body: fd}); return await r.json(); }
+async function driveRename(id, name, parent, oldParent){
+  let url = API+"/"+id+"?fields=id"; if (parent && oldParent && parent!==oldParent) url += "&addParents="+parent+"&removeParents="+oldParent;
+  await g(url, {method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({name})}); }
+async function driveTrash(id){ await g(API+"/"+id, {method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({trashed:true})}); }
+async function driveBlob(id){ return await (await g(API+"/"+id+"?alt=media")).blob(); }
+
+/* ================= data in Drive ================= */
+async function loadVault(){
+  const found = await driveFind(`name='${DATA_NAME}' and trashed=false`);
+  if (found.length) { S.dataId = found[0].id; S.rootId = found[0].parents?.[0]; Object.assign(S.data, await (await g(API+"/"+S.dataId+"?alt=media")).json()); }
+  else {
+    const roots = await driveFind(`name='${ROOT_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    S.rootId = roots[0]?.id || await driveFolder(ROOT_NAME);
+    const r = await driveUpload(new Blob([JSON.stringify(S.data)],{type:"application/json"}), DATA_NAME, S.rootId); S.dataId = r.id;
+  }
+  S.data.items ||= {}; S.data.deleted ||= {}; S.data.profile ||= {}; S.data.profile.folders ||= {};
+  if (!S.data.profile.members?.length) S.data.profile.members = [{id:"me",name:"רועי",latin:"",color:COLORS[0]}];
+}
+let saveChain = Promise.resolve();
+function saveVault(){ saveChain = saveChain.then(doSave, doSave); return saveChain; }
+async function doSave(){
+  // merge with the copy in Drive, in case the phone and the computer both changed something
+  try {
+    const remote = await (await g(API+"/"+S.dataId+"?alt=media")).json();
+    const del = {...(remote.deleted||{}), ...S.data.deleted};
+    const merged = {...(remote.items||{})};
+    for (const [id,it] of Object.entries(S.data.items)) if (!merged[id] || (it.updatedAt||0) >= (merged[id].updatedAt||0)) merged[id]=it;
+    for (const id of Object.keys(del)) delete merged[id];
+    S.data.items = merged; S.data.deleted = del;
+    if ((remote.profile?.updatedAt||0) > (S.data.profile.updatedAt||0)) S.data.profile = {...remote.profile, folders:{...remote.profile.folders, ...S.data.profile.folders}};
+  } catch(e){ if (e instanceof NeedAuth) throw e; }
+  await g(UP+"/"+S.dataId+"?uploadType=media", {method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(S.data)});
+  render();
+}
+async function ensurePath(parts){
+  const F = S.data.profile.folders; let parent = S.rootId, key = "";
+  for (const p of parts) { key += "/"+p; if (!F[key]) { F[key] = await driveFolder(p, parent); S.data.profile.updatedAt = Date.now(); } parent = F[key]; }
+  return parent;
+}
+function fileTarget(it, ext){
+  const m = member(it.member);
+  if (it.kind==="payslip") return { path:["תלושי שכר", String(it.year)], name:`${it.year}-${String(it.month).padStart(2,"0")} תלוש ${m.name}${ext}` };
+  return { path:["מסמכים", m.name], name:`${m.name} - ${it.title||"מסמך"}${it.expiry? " - עד "+it.expiry:""}${ext}` };
+}
+
+/* ================= helpers ================= */
+function countdown(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+"T00:00:00"); if (isNaN(d)) return null;
+  const days = Math.round((d - today())/864e5);
+  if (days < 0) { const a=-days; const u = a<=60? a+" ימים" : a<730? Math.round(a/30.4)+" חודשים" : Math.floor(a/365)+" שנים"; return {days, big:"פג", u:"לפני "+u, st:"bad"}; }
+  let n,u; if (days<=60){n=days;u=days===1?"יום":"ימים"} else if(days<730){n=Math.round(days/30.4);u="חודשים"} else {n=Math.floor(days/365);u="שנים"}
+  return {days, n, big:String(n), u, st: days<=90? "soon":"ok"};
+}
+const dmy = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${+d}/${+m}/${y}`; };
+const numOrNull = s => { s=String(s||"").replace(/[,\s¥]/g,""); if(!s) return null; const n=Number(s); return isFinite(n)? n : null; };
+const extOf = f => (f.name.match(/\.[a-z0-9]+$/i)||[""])[0] || (f.type==="application/pdf"?".pdf":".jpg");
+
+/* ================= screens ================= */
+function render(){
+  const nav = document.getElementById("nav");
+  if (!clientId()) { nav.hidden=true; app.innerHTML = viewSetup(); bindSetup(); return; }
+  if (!S.ready) {
+    nav.hidden=true;
+    app.innerHTML = `<div class="center"><div class="seal">כ</div><h1>הכספת שלי</h1>
+      <p class="muted" style="max-width:34ch;margin:0">תלושי שכר, דרכונים ומסמכים של המשפחה. הכול נשמר ב-Google Drive שלך בלבד.</p>
+      ${S.error? `<div class="banner">${esc(S.error)}</div>`:""}
+      <button class="btn" id="signin" style="min-width:220px">כניסה עם Google</button>
+      <p class="muted small" style="margin:0">בסין צריך VPN פעיל.</p></div>`;
+    document.getElementById("signin").onclick = start; return;
+  }
+  nav.hidden=false;
+  nav.querySelectorAll("button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"page":"false"));
+  const v = {home:viewHome, pay:viewPay, docs:viewDocs, family:viewFamily}[S.tab] || viewHome;
+  app.innerHTML = (S.needAuth? `<div class="banner"><span>החיבור ל-Google פג (אחרי שעה). צריך להתחבר שוב כדי לשמור.</span><button class="btn" id="reauth">התחברות</button></div>` : "") + v();
+  const ra = document.getElementById("reauth"); if (ra) ra.onclick = async ()=>{ try{ await signIn(); S.needAuth=false; render(); }catch(e){ toast("ההתחברות נכשלה"); } };
+  bindView();
+}
+function viewSetup(){
+  return `<div class="center"><div class="seal">כ</div><h1>הגדרה ראשונה</h1>
+    <p class="muted" style="max-width:40ch;margin:0">הדבק כאן את ה-Client ID שקיבלת מ-Google Cloud. זה נעשה פעם אחת בכל מכשיר, עד שאכניס אותו לקובץ.</p>
+    <div class="field" style="width:100%;max-width:420px"><input id="cid" class="ltr" placeholder="xxxx.apps.googleusercontent.com"></div>
+    <button class="btn" id="cidSave" style="min-width:220px">שמירה</button></div>`;
+}
+function bindSetup(){ document.getElementById("cidSave").onclick = ()=>{ const v=document.getElementById("cid").value.trim(); if(!/apps\.googleusercontent\.com$/.test(v)){ toast("זה לא נראה כמו Client ID"); return; } ls.set("vault.clientId", v); render(); }; }
+
+async function start(){
+  try {
+    S.error=null;
+    if (!tokenClient) await initAuth();
+    if (!S.token || Date.now()>S.tokenExp) await signIn();
+    app.innerHTML = `<div class="center"><div class="seal">כ</div><p class="muted">טוען מה-Drive…</p></div>`;
+    await loadVault(); S.ready=true; S.needAuth=false; render(); handleShared();
+  } catch(e){ S.error = e?.type==="popup_closed"? "חלון ההתחברות נסגר." : (e instanceof NeedAuth)? null : "לא הצלחתי להתחבר ל-Drive. בדוק שה-VPN פעיל ונסה שוב."; S.ready=false; render(); }
+}
+
+function docRow(it){
+  const c = countdown(it.expiry), m = member(it.member), cat = CATS[it.category]||CATS.other;
+  return `<button class="row" data-open="${it.id}">
+    <span class="avatar" style="background:${m.color}">${esc(m.name.slice(0,1))}</span>
+    <span class="main"><span class="t">${esc(it.title || cat.he)}</span>
+      <span class="s">${esc(m.name)} · ${esc(cat.he)}${it.expiry? " · בתוקף עד <span class='num'>"+dmy(it.expiry)+"</span>":""}</span></span>
+    ${c? `<span class="count st-${c.st}"><b>${c.big}</b><span>${esc(c.u)}</span></span>` : `<span class="count muted"><span>ללא תוקף</span></span>`}
+  </button>`;
+}
+function payRow(it){
+  const m = member(it.member);
+  return `<button class="row" data-open="${it.id}"><span class="cat-ic">${icon(PAY_IC)}</span>
+    <span class="main"><span class="t">תלוש ${MONTHS[it.month-1]} ${it.year}</span><span class="s">${esc(m.name)}${it.employer? " · "+esc(it.employer):""}</span></span>
+    <span class="count"><span class="num" style="font-size:15px">${money(it.net)}</span></span></button>`;
+}
+function viewHome(){
+  const all = items(), docs = all.filter(i=>i.kind==="doc");
+  const soon = docs.filter(i=>{const c=countdown(i.expiry); return c && c.days<=120;}).sort((a,b)=>a.expiry.localeCompare(b.expiry));
+  const now = new Date(), y = now.getFullYear(), curM = now.getMonth()+1;
+  const pm = S.payMember || members()[0]?.id;
+  const have = new Set(all.filter(i=>i.kind==="payslip"&&i.member===pm).map(i=>i.year+"-"+i.month));
+  const missing = []; for(let yy=START_YEAR; yy<=y; yy++) for(let m=(yy===START_YEAR?START_MONTH:1); m<=(yy===y?curM-1:12); m++) if(!have.has(yy+"-"+m)) missing.push([yy,m]);
+  const recent = [...all].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,4);
+  const h = now.getHours(), greet = h<12?"בוקר טוב":h<18?"צהריים טובים":"ערב טוב";
+  return `
+  <div class="top"><div><div class="eyebrow">${greet}</div><h1>הכספת שלי</h1></div></div>
+  <div class="quick">
+    <button class="btn" data-add="payslip">${icon('<path d="M12 5v14M5 12h14"/>',18)}תלוש שכר</button>
+    <button class="btn ghost" data-add="doc">${icon('<path d="M12 5v14M5 12h14"/>',18)}מסמך</button>
+  </div>
+  <div class="section"><div class="sec-head"><h2>פג בקרוב</h2><button class="link" data-go="docs">לכל המסמכים</button></div>
+    ${soon.length? `<div class="list">${soon.map(docRow).join("")}</div>` : `<div class="empty">אין מסמכים שפגים ב-4 החודשים הקרובים.</div>`}</div>
+  <div class="section"><div class="sec-head"><h2>תלושים חסרים</h2><button class="link" data-go="pay">לכל התלושים</button></div>
+    ${missing.length? `<div class="card"><div><b>${missing.length===1?"חסר תלוש אחד":"חסרים "+missing.length+" תלושים"}</b> <span class="muted small">(${esc(member(pm).name)}, מאז ${MONTHS[START_MONTH-1]} ${START_YEAR})</span></div>
+      <div class="chips" style="flex-wrap:wrap">${missing.map(([yy,m])=>`<button class="chip" data-addmonth="${m}" data-addyear="${yy}">${MONTHS[m-1]} ${String(yy).slice(2)}</button>`).join("")}</div></div>`
+      : `<div class="empty">כל התלושים מאז ${MONTHS[START_MONTH-1]} ${START_YEAR} נמצאים בכספת.</div>`}</div>
+  <div class="section"><h2>נוספו לאחרונה</h2>
+    ${recent.length? `<div class="list">${recent.map(it=> it.kind==="doc"? docRow(it) : payRow(it)).join("")}</div>` : `<div class="empty">עוד לא הוספת כלום. צלם תלוש או מסמך כדי להתחיל.</div>`}</div>`;
+}
+function viewPay(){
+  const ms = members(), pm = S.payMember || ms[0]?.id;
+  const all = items().filter(i=>i.kind==="payslip" && i.member===pm);
+  const years = []; for (let yy=START_YEAR; yy<=new Date().getFullYear(); yy++) years.push(yy);
+  all.forEach(i=>{ if(!years.includes(i.year)) years.push(i.year); }); years.sort();
+  const minY = years[0], maxY = years[years.length-1];
+  const list = all.filter(i=>i.year===S.year);
+  const byM = {}; list.forEach(i=>{ (byM[i.month] ||= []).push(i); });
+  const sum = k => list.reduce((a,i)=>a+(Number(i[k])||0),0);
+  const now = new Date(), isCur = S.year===now.getFullYear(), curM = now.getMonth()+1;
+  const maxV = Math.max(1, ...list.map(i=>Number(i.net)||0));
+  const bars = Array.from({length:12},(_,k)=>{ const its=byM[k+1]||[]; if(!its.length) return `<div class="bar missing"></div>`;
+    const n = its.reduce((a,i)=>a+(Number(i.net)||0),0); return `<div class="bar" title="${MONTHS[k]}: ${money(n)}"><i style="height:${n/maxV*100}%"></i></div>`; }).join("");
+  const extra = [["social","ביטוח סוציאלי (社保)"],["housing","קרן דיור (公积金)"]].filter(([k])=>sum(k)>0);
+  const months = Object.keys(byM).length;
+  return `
+  <div class="top"><div><div class="eyebrow">工资条 · תלושי שכר</div><h1>תלושי שכר</h1></div><button class="btn" data-add="payslip">הוספה</button></div>
+  ${ms.length>1? `<div class="chips">${ms.map(m=>`<button class="chip" data-paymember="${m.id}" aria-pressed="${m.id===pm}">${esc(m.name)}</button>`).join("")}</div>`:""}
+  <div class="yearbar">
+    <button data-year="${S.year+1}" aria-label="שנה הבאה" ${S.year>=maxY?"disabled":""}>›</button>
+    <div style="text-align:center"><div class="y">${S.year}</div><div class="muted small">${list.length} תלושים</div></div>
+    <button data-year="${S.year-1}" aria-label="שנה קודמת" ${S.year<=minY?"disabled":""}>‹</button>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="l">סה"כ נטו (实发)</div><div class="v">${money(sum("net"))}</div></div>
+    <div class="stat"><div class="l">סה"כ מס (个税)</div><div class="v">${money(sum("tax"))}</div></div>
+    ${extra.map(([k,l])=>`<div class="stat"><div class="l">${l}</div><div class="v">${money(sum(k))}</div></div>`).join("")}
+    <div class="stat"><div class="l">ממוצע נטו לחודש</div><div class="v">${months? money(sum("net")/months):"—"}</div></div>
+  </div>
+  <div class="chart"><div class="bars">${bars}</div><div class="blabels">${MSHORT.map(m=>`<span>${m}</span>`).join("")}</div></div>
+  <div class="months">${Array.from({length:12},(_,k)=>{ const m=k+1, its=byM[m]||[]; const fut = isCur && m>curM;
+    if(!its.length && S.year===START_YEAR && m<START_MONTH) return `<div class="month miss future"><span class="mn">${MONTHS[k]}</span><span class="small">לפני ההתחלה</span></div>`;
+    if(its.length){ const it=its[0]; return `<button class="month" data-open="${it.id}"><span class="mn">${MONTHS[k]}</span><span class="mv">${money(it.net)}</span>${it.tax!=null?`<span class="muted small">מס ${money(it.tax)}</span>`:""}</button>`; }
+    return `<button class="month miss ${fut?"future":""}" data-addmonth="${m}" data-addyear="${S.year}"><span class="mn">${MONTHS[k]}</span><span class="small">${fut?"עוד לא":"+ הוספת תלוש"}</span></button>`; }).join("")}</div>`;
+}
+function viewDocs(){
+  const ms = members(); let docs = items().filter(i=>i.kind==="doc");
+  const used = Object.keys(CATS).filter(c=>docs.some(d=>d.category===c));
+  if (S.docMember!=="all") docs = docs.filter(d=>d.member===S.docMember);
+  if (S.docCat!=="all") docs = docs.filter(d=>d.category===S.docCat);
+  docs.sort((a,b)=> (a.expiry||"9999").localeCompare(b.expiry||"9999"));
+  return `
+  <div class="top"><div><div class="eyebrow">אישי, זיהוי, ביטוחים</div><h1>מסמכים</h1></div><button class="btn" data-add="doc">הוספה</button></div>
+  <div class="chips"><button class="chip" data-docmember="all" aria-pressed="${S.docMember==="all"}">כולם</button>${ms.map(m=>`<button class="chip" data-docmember="${m.id}" aria-pressed="${S.docMember===m.id}">${esc(m.name)}</button>`).join("")}</div>
+  ${used.length>1? `<div class="chips"><button class="chip" data-doccat="all" aria-pressed="${S.docCat==="all"}">כל הסוגים</button>${used.map(c=>`<button class="chip" data-doccat="${c}" aria-pressed="${S.docCat===c}">${CATS[c].he}</button>`).join("")}</div>`:""}
+  <div class="muted small">${docs.length} פריטים · מהקרוב לרחוק</div>
+  ${docs.length? `<div class="list">${docs.map(docRow).join("")}</div>` : `<div class="empty">אין כאן מסמכים עדיין. דרכון, ויזה, אשרת שהייה, רישיון, ביטוח.</div>`}`;
+}
+function viewFamily(){
+  const hasKey = !!ls.get("vault.aiKey");
+  return `
+  <div class="top"><div><div class="eyebrow">הגדרות</div><h1>משפחה והגדרות</h1></div></div>
+  <div class="section"><h2>בני משפחה</h2>
+    <div class="card">${members().map(m=>`<div class="mrow"><span class="avatar" style="background:${m.color}">${esc(m.name.slice(0,1))}</span>
+      <div class="main"><b>${esc(m.name)}</b><div class="muted small">${m.latin? "בדרכון: "+esc(m.latin):"אין שם באנגלית"} · ${items().filter(x=>x.member===m.id).length} פריטים</div></div>
+      <button class="link" data-editmember="${m.id}">עריכה</button></div>`).join("")}
+      <button class="btn ghost" data-editmember="">+ הוספת בן/בת משפחה</button></div></div>
+  <div class="section"><h2>Google Drive</h2>
+    <div class="card small">כל הקבצים נשמרים בתיקייה "${ROOT_NAME}" ב-Drive שלך: תלושי שכר לפי שנה, מסמכים לפי אדם. האתר עצמו לא שומר שום מידע.
+      <button class="btn ghost" id="signout">התנתקות</button></div></div>
+  <div class="section"><h2>קריאה אוטומטית (לא חובה)</h2>
+    <div class="card small">${hasKey? `<span><span class="pill ok">פעיל</span> במכשיר הזה. תלושים ומסמכים ייקראו אוטומטית בזמן ההוספה.</span><button class="btn ghost" id="aiOff">כיבוי</button>`
+      : `<span>כבוי. אם תרצה בהמשך, מדביקים כאן מפתח API של Claude, והכספת תמלא את השדות מהצילום לבד. המפתח נשמר רק במכשיר הזה.</span>
+      <div class="field"><input id="aiKey" class="ltr" placeholder="sk-ant-..."></div><button class="btn ghost" id="aiOn">שמירה</button>`}</div></div>`;
+}
+
+function bindView(){
+  const $$ = s => app.querySelectorAll(s);
+  $$("[data-go]").forEach(b=>b.onclick=()=>setTab(b.dataset.go));
+  $$("[data-add]").forEach(b=>b.onclick=()=>openForm(b.dataset.add));
+  $$("[data-addmonth]").forEach(b=>b.onclick=()=>openForm("payslip",null,{month:+b.dataset.addmonth, year:+b.dataset.addyear}));
+  $$("[data-open]").forEach(b=>b.onclick=()=>openItem(b.dataset.open));
+  $$("[data-year]").forEach(b=>b.onclick=()=>{S.year=+b.dataset.year; render();});
+  $$("[data-paymember]").forEach(b=>b.onclick=()=>{S.payMember=b.dataset.paymember; render();});
+  $$("[data-docmember]").forEach(b=>b.onclick=()=>{S.docMember=b.dataset.docmember; render();});
+  $$("[data-doccat]").forEach(b=>b.onclick=()=>{S.docCat=b.dataset.doccat; render();});
+  $$("[data-editmember]").forEach(b=>b.onclick=()=>openMember(b.dataset.editmember));
+  const so=document.getElementById("signout"); if(so) so.onclick=signOut;
+  const on=document.getElementById("aiOn"); if(on) on.onclick=()=>{ const k=document.getElementById("aiKey").value.trim(); if(!k.startsWith("sk-")){toast("המפתח לא נראה תקין");return;} ls.set("vault.aiKey",k); render(); toast("הקריאה האוטומטית פעילה"); };
+  const off=document.getElementById("aiOff"); if(off) off.onclick=()=>{ ls.set("vault.aiKey",null); render(); };
+}
+function setTab(t){ S.tab=t; ls.set("vault.tab",t); render(); window.scrollTo(0,0); }
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ================= sheets ================= */
+let scrimEl=null;
+function openSheet(html){ closeSheet(); scrimEl=document.createElement("div"); scrimEl.className="scrim";
+  scrimEl.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  scrimEl.addEventListener("click",e=>{ if(e.target===scrimEl) closeSheet(); });
+  document.body.appendChild(scrimEl); document.body.style.overflow="hidden";
+  scrimEl.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet); return scrimEl; }
+function closeSheet(){ if(scrimEl){ scrimEl.remove(); scrimEl=null; document.body.style.overflow=""; } }
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
+const memberOpts = sel => members().map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${esc(m.name)}</option>`).join("");
+
+function openForm(kind, item=null, preset={}, sharedFile=null){
+  const isPay = kind==="payslip", it = item || {}, now = new Date();
+  const v = (k,d="") => it[k] ?? preset[k] ?? d;
+  const pend = { file:null, preview:null };
+  const sel = v("member", isPay ? (S.payMember||members()[0]?.id) : (S.docMember!=="all"?S.docMember:members()[0]?.id));
+  const defM = now.getMonth()===0?12:now.getMonth(), defY = now.getMonth()===0? now.getFullYear()-1 : now.getFullYear();
+  const el = openSheet(`
+    <div class="sheet-head"><h2>${item? "עריכה" : isPay? "תלוש שכר חדש" : "מסמך חדש"}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
+    <div class="drop">
+      <label>${icon('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}צילום<input type="file" id="fCam" accept="image/*" capture="environment"></label>
+      <label>${icon('<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>')}קובץ (PDF או תמונה)<input type="file" id="fFile" accept="image/*,application/pdf"></label>
+    </div>
+    <div id="pv" class="preview" ${it.fileId?"":"hidden"}><img id="pvImg" alt="" hidden><div class="main"><b id="pvName">${esc(it.fileName||"")}</b><div class="muted small" id="pvSub">${item?"בחר קובץ חדש כדי להחליף":""}</div></div></div>
+    <div id="ai" class="ai" hidden></div>
+    <form class="form" id="frm" novalidate>
+      ${isPay? `
+      <div class="field"><label for="f_month">חודש</label><select id="f_month">${MONTHS.map((m,i)=>`<option value="${i+1}" ${v("month",defM)==i+1?"selected":""}>${m}</option>`).join("")}</select></div>
+      <div class="field"><label for="f_year">שנה</label><input id="f_year" class="ltr" inputmode="numeric" value="${v("year",defY)}"></div>
+      <div class="field"><label for="f_net">נטו 实发 (¥)</label><input id="f_net" class="ltr" inputmode="decimal" value="${v("net")}"></div>
+      <div class="field"><label for="f_tax">מס הכנסה 个税 (¥)</label><input id="f_tax" class="ltr" inputmode="decimal" value="${v("tax")}"></div>
+      <div class="field"><label for="f_social">ביטוח סוציאלי 社保 (אם יש)</label><input id="f_social" class="ltr" inputmode="decimal" value="${v("social")}"></div>
+      <div class="field"><label for="f_housing">קרן דיור 公积金 (אם יש)</label><input id="f_housing" class="ltr" inputmode="decimal" value="${v("housing")}"></div>
+      <div class="field"><label for="f_member">של מי</label><select id="f_member">${memberOpts(sel)}</select></div>
+      <div class="field"><label for="f_employer">מעסיק</label><input id="f_employer" value="${esc(v("employer"))}"></div>
+      ` : `
+      <div class="field"><label for="f_category">סוג</label><select id="f_category">${Object.entries(CATS).map(([k,c])=>`<option value="${k}" ${v("category","passport")===k?"selected":""}>${c.he}</option>`).join("")}</select></div>
+      <div class="field"><label for="f_member">של מי</label><select id="f_member">${memberOpts(sel)}</select></div>
+      <div class="field full"><label for="f_title">שם המסמך</label><input id="f_title" value="${esc(v("title"))}" placeholder="למשל: דרכון ישראלי"></div>
+      <div class="field"><label for="f_issue">תאריך הנפקה</label><input id="f_issue" type="date" value="${v("issue")}"></div>
+      <div class="field"><label for="f_expiry">בתוקף עד</label><input id="f_expiry" type="date" value="${v("expiry")}"></div>
+      <div class="field full"><label for="f_number">מספר מסמך</label><input id="f_number" class="ltr" value="${esc(v("number"))}"></div>`}
+      <div class="field full"><label for="f_notes">הערות</label><textarea id="f_notes" rows="2">${esc(v("notes"))}</textarea></div>
+    </form>
+    <div class="actions"><button class="btn" id="saveBtn">שמירה</button><button class="btn ghost" data-close>ביטול</button></div>`);
+  const $ = id => el.querySelector("#"+id);
+  const aiMsg=(cls,t)=>{ const a=$("ai"); a.hidden=false; a.className="ai "+cls; a.textContent=t; };
+  const take = async f => {
+    if (f.size > 25*1024*1024) { aiMsg("err","הקובץ גדול מ-25MB."); return; }
+    pend.file=f; pend.preview=null; $("pv").hidden=false; $("pvName").textContent=f.name; $("pvSub").textContent="מכין תצוגה…";
+    try { pend.preview = await makePreview(f); $("pvImg").src = URL.createObjectURL(pend.preview); $("pvImg").hidden=false; $("pvSub").textContent = Math.round(f.size/1024)+" KB"; }
+    catch(err){ $("pvSub").textContent = Math.round(f.size/1024)+" KB"; }
+    if (pend.preview && ls.get("vault.aiKey")) readWithAI(kind, pend.preview, el, aiMsg);
+  };
+  $("fCam").onchange = e=>{ const f=e.target.files?.[0]; if(f) take(f); };
+  $("fFile").onchange = e=>{ const f=e.target.files?.[0]; if(f) take(f); };
+  if (sharedFile) take(sharedFile);
+  $("frm").onsubmit = e=>e.preventDefault();
+  $("saveBtn").onclick = async ()=>{
+    const b=$("saveBtn"); b.disabled=true; b.textContent="שומר ב-Drive…";
+    try { await saveForm(kind, it, pend, el); closeSheet(); toast("נשמר ב-Drive"); }
+    catch(err){ aiMsg("err", err instanceof NeedAuth? "צריך להתחבר שוב ל-Google ואז לשמור." : err.userMsg || "השמירה נכשלה. בדוק שה-VPN פעיל ונסה שוב."); b.disabled=false; b.textContent="שמירה"; }
+  };
+}
+
+async function makePreview(file){
+  if (file.type==="application/pdf" || /\.pdf$/i.test(file.name)) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+    return await renderPdfPage(pdf, 1, 1600);
+  }
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+  const k = Math.min(1, 1600/Math.max(img.naturalWidth,img.naturalHeight));
+  const c=document.createElement("canvas"); c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+  return await new Promise(r=>c.toBlob(r,"image/jpeg",.85));
+}
+async function renderPdfPage(pdf, n, maxPx){
+  const page = await pdf.getPage(n); const vp0 = page.getViewport({scale:1});
+  const vp = page.getViewport({scale: Math.min(2.2, maxPx/Math.max(vp0.width,vp0.height))});
+  const c=document.createElement("canvas"); c.width=vp.width; c.height=vp.height; const ctx=c.getContext("2d");
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); await page.render({canvasContext:ctx, viewport:vp}).promise;
+  return await new Promise(r=>c.toBlob(r,"image/jpeg",.85));
+}
+
+const PROMPT_PAY = `Read this payslip (most likely Chinese 工资条). Return ONLY JSON: {"year":int|null,"month":int|null (salary month 1-12),"net":number|null (实发工资/net pay),"tax":number|null (个人所得税),"social":number|null (employee 社保 total, null if none),"housing":number|null (住房公积金 employee part, null if none),"employer":string|null}. Plain numbers, no commas.`;
+const PROMPT_DOC = `Read this personal document (passport, visa, Chinese residence permit 居留许可, ID, driving licence, insurance, contract). Return ONLY JSON: {"category":"passport"|"visa"|"residence"|"id"|"license"|"insurance"|"contract"|"other","title":short Hebrew name e.g. "דרכון ישראלי","holder":full name in Latin letters or null,"number":string|null,"issue":"YYYY-MM-DD"|null,"expiry":"YYYY-MM-DD"|null}`;
+async function readWithAI(kind, blob, el, msg){
+  msg("busy", kind==="payslip"? "קורא את התלוש…" : "מזהה את המסמך…");
+  try {
+    const b64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=rej; fr.readAsDataURL(blob); });
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{ "content-type":"application/json", "x-api-key": ls.get("vault.aiKey"), "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+      body: JSON.stringify({ model:"claude-haiku-5-5", max_tokens:400, messages:[{role:"user", content:[{type:"image", source:{type:"base64", media_type:"image/jpeg", data:b64}}, {type:"text", text: kind==="payslip"?PROMPT_PAY:PROMPT_DOC}]}] }) });
+    if (!r.ok) throw new Error(r.status);
+    const txt = (await r.json()).content?.find(c=>c.type==="text")?.text || "";
+    const j = JSON.parse(txt.slice(txt.indexOf("{"), txt.lastIndexOf("}")+1));
+    if (!document.body.contains(el)) return;
+    const set = (id,val) => { const f=el.querySelector("#"+id); if(f && val!=null && val!=="") f.value=val; };
+    if (kind==="payslip") {
+      ["net","tax","social","housing"].forEach(k=>set("f_"+k, j[k])); set("f_employer", j.employer);
+      if (j.month>=1&&j.month<=12) set("f_month", j.month); if (j.year>2000) set("f_year", j.year);
+      msg("done", `זוהה: ${j.month?MONTHS[j.month-1]:""} ${j.year||""}, נטו ${money(j.net)}. בדוק לפני שמירה.`);
+    } else {
+      if (CATS[j.category]) set("f_category", j.category); set("f_title", j.title); set("f_number", j.number); set("f_issue", j.issue); set("f_expiry", j.expiry);
+      let who=""; if (j.holder) { const h=j.holder.toUpperCase(); const m=members().find(m=>m.latin && m.latin.split(/\s+/).every(p=>h.includes(p))); if(m){ set("f_member", m.id); who=" של "+m.name; } else who=` (${j.holder})`; }
+      msg("done", `זוהה: ${j.title||"מסמך"}${who}${j.expiry?", בתוקף עד "+dmy(j.expiry):""}. בדוק לפני שמירה.`);
+    }
+  } catch(e){ if (document.body.contains(el)) msg("err","לא הצלחתי לקרוא אוטומטית. מלא את הפרטים ידנית."); }
+}
+
+async function saveForm(kind, it, pend, el){
+  const gv = id => el.querySelector("#"+id)?.value?.trim() ?? "";
+  const data = { ...it, kind, member:gv("f_member"), notes:gv("f_notes"), updatedAt:Date.now() };
+  if (kind==="payslip") {
+    Object.assign(data, { month:+gv("f_month"), year:+gv("f_year"), net:numOrNull(gv("f_net")), tax:numOrNull(gv("f_tax")),
+      social:numOrNull(gv("f_social")), housing:numOrNull(gv("f_housing")), employer:gv("f_employer"), currency:"CNY" });
+    if (!(data.year>1990 && data.year<2100)) { const e=new Error(); e.userMsg="השנה לא תקינה."; throw e; }
+  } else Object.assign(data, { category:gv("f_category"), title:gv("f_title") || CATS[gv("f_category")]?.he, issue:gv("f_issue"), expiry:gv("f_expiry"), number:gv("f_number") });
+  if (!data.id) { data.id = uid(); data.createdAt = Date.now(); }
+  const ext = pend.file ? extOf(pend.file) : (data.fileName ? (data.fileName.match(/\.[a-z0-9]+$/i)||[""])[0] : "");
+  const tgt = fileTarget(data, ext);
+  const parent = await ensurePath(tgt.path);
+  if (pend.file) {
+    const up = await driveUpload(pend.file, tgt.name, parent);
+    if (it.fileId) driveTrash(it.fileId).catch(()=>{});
+    Object.assign(data, { fileId:up.id, fileName:tgt.name, mime:pend.file.type, folderId:parent });
+  } else if (data.fileId && (tgt.name!==it.fileName || parent!==it.folderId)) {
+    await driveRename(data.fileId, tgt.name, parent, it.folderId).catch(()=>{}); data.fileName=tgt.name; data.folderId=parent;
+  }
+  S.data.items[data.id] = data; await saveVault();
+}
+
+function openItem(id){
+  const it = S.data.items[id]; if(!it) return;
+  const m = member(it.member), isPay = it.kind==="payslip", c = countdown(it.expiry);
+  const rows = isPay ? [["חודש", MONTHS[it.month-1]+" "+it.year],["נטו",money(it.net)],["מס הכנסה",money(it.tax)],
+      ...(it.social?[["ביטוח סוציאלי",money(it.social)]]:[]),...(it.housing?[["קרן דיור",money(it.housing)]]:[]),["מעסיק",esc(it.employer||"—")],["של",esc(m.name)]]
+    : [["סוג",(CATS[it.category]||CATS.other).he],["של",esc(m.name)],["מספר",it.number?`<span class="num">${esc(it.number)}</span>`:"—"],["הונפק",it.issue?dmy(it.issue):"—"],
+       ["בתוקף עד", it.expiry? `${dmy(it.expiry)} ${c?`<span class="st-${c.st}">(${c.days<0?"פג "+c.u:"עוד "+c.n+" "+c.u})</span>`:""}`:"—"]];
+  const el = openSheet(`
+    <div class="sheet-head"><h2>${isPay? "תלוש "+MONTHS[it.month-1]+" "+it.year : esc(it.title)}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
+    <div id="fileBox">${it.fileId? `<div class="empty">טוען את הקובץ מה-Drive…</div>` : `<div class="empty">אין קובץ מצורף. אפשר להוסיף דרך עריכה.</div>`}</div>
+    <div class="stats">${rows.map(([l,v])=>`<div class="stat"><div class="l">${l}</div><div style="font-weight:600">${v}</div></div>`).join("")}</div>
+    ${it.notes? `<div class="card small">${esc(it.notes)}</div>`:""}
+    <div class="actions"><button class="btn" id="editBtn">עריכה</button><button class="btn danger" id="delBtn">מחיקה</button></div>
+    <div id="delConfirm" class="card" hidden><b>למחוק?</b><div class="muted small">הפריט יימחק מהכספת והקובץ יעבור לפח של Drive (אפשר לשחזר משם 30 יום).</div>
+      <div class="actions"><button class="btn danger" id="delYes">כן, למחוק</button><button class="btn ghost" id="delNo">ביטול</button></div></div>`);
+  el.querySelector("#editBtn").onclick = ()=>openForm(it.kind, it);
+  el.querySelector("#delBtn").onclick = ()=>{ el.querySelector("#delConfirm").hidden=false; };
+  el.querySelector("#delNo").onclick = ()=>{ el.querySelector("#delConfirm").hidden=true; };
+  el.querySelector("#delYes").onclick = async ()=>{ try{ if(it.fileId) await driveTrash(it.fileId).catch(()=>{}); delete S.data.items[it.id]; S.data.deleted[it.id]=Date.now(); await saveVault(); closeSheet(); toast("נמחק"); } catch(e){ toast("המחיקה נכשלה"); } };
+  if (it.fileId) (async ()=>{
+    const box = el.querySelector("#fileBox");
+    try {
+      const blob = await driveBlob(it.fileId); if (!document.body.contains(el)) return;
+      const url = URL.createObjectURL(blob);
+      let pic = url;
+      if ((it.mime||blob.type)==="application/pdf") { pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        const pdf = await pdfjsLib.getDocument({data: await blob.arrayBuffer()}).promise; pic = URL.createObjectURL(await renderPdfPage(pdf,1,1800)); }
+      box.innerHTML = `<img class="big-preview" src="${pic}" alt="הקובץ"><a class="btn ghost" style="display:block;margin-top:10px" href="${url}" target="_blank" rel="noopener">פתיחה במסך מלא</a>`;
+    } catch(e){ box.innerHTML = `<div class="empty">לא הצלחתי לטעון את הקובץ מה-Drive. בדוק VPN.</div>`; }
+  })();
+}
+
+function openMember(id){
+  const m = members().find(x=>x.id===id) || {id:"", name:"", latin:"", color: COLORS[members().length % COLORS.length]};
+  const used = items().filter(x=>x.member===m.id).length;
+  const el = openSheet(`
+    <div class="sheet-head"><h2>${m.id? "עריכת "+esc(m.name) : "בן/בת משפחה חדש/ה"}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
+    <div class="form">
+      <div class="field full"><label for="m_name">שם</label><input id="m_name" value="${esc(m.name)}"></div>
+      <div class="field full"><label for="m_latin">שם באנגלית כמו בדרכון</label><input id="m_latin" class="ltr" value="${esc(m.latin)}" placeholder="ROIE COHEN"></div>
+      <div class="field full"><label>צבע</label><div class="chips">${COLORS.map(c=>`<button type="button" class="chip" data-col="${c}" aria-pressed="${c===m.color}" style="background:${c};border-color:${c};width:34px;height:34px;padding:0" aria-label="צבע"></button>`).join("")}</div></div>
+    </div>
+    <div class="actions"><button class="btn" id="mSave">שמירה</button>${m.id && members().length>1 && !used? `<button class="btn danger" id="mDel">הסרה</button>`:""}</div>
+    ${used&&m.id? `<div class="muted small">יש ${used} פריטים ששייכים ל${esc(m.name)}, לכן אי אפשר להסיר.</div>`:""}`);
+  let col = m.color;
+  el.querySelectorAll("[data-col]").forEach(b=>b.onclick=()=>{ col=b.dataset.col; el.querySelectorAll("[data-col]").forEach(x=>{x.setAttribute("aria-pressed", x===b); x.style.outline = x===b? "3px solid var(--ink)":"";}); });
+  el.querySelector("#mSave").onclick = async ()=>{
+    const name = el.querySelector("#m_name").value.trim(); if(!name) return;
+    const rec = {id: m.id || uid(), name, latin: el.querySelector("#m_latin").value.trim().toUpperCase(), color: col};
+    const ms = members(), i = ms.findIndex(x=>x.id===rec.id); if (i>=0) ms[i]=rec; else ms.push(rec);
+    S.data.profile.updatedAt = Date.now();
+    try { await saveVault(); closeSheet(); toast("נשמר"); } catch(e){ toast("השמירה נכשלה"); }
+  };
+  const del = el.querySelector("#mDel");
+  if (del) del.onclick = async ()=>{ S.data.profile.members = members().filter(x=>x.id!==m.id); S.data.profile.updatedAt=Date.now(); await saveVault(); closeSheet(); };
+}
+
+/* ============ file shared from the phone (Share -> הכספת שלי) ============ */
+async function handleShared(){
+  if (!location.search.includes("shared=1")) return;
+  history.replaceState(null,"",location.pathname);
+  try {
+    const cache = await caches.open("vault-share"); const res = await cache.match("shared-file"); if (!res) return;
+    const blob = await res.blob(); const name = decodeURIComponent(res.headers.get("x-name") || "shared"); await cache.delete("shared-file");
+    const file = new File([blob], name, {type: blob.type});
+    const el = openSheet(`<div class="sheet-head"><h2>מה זה?</h2><button class="x" data-close aria-label="סגירה">×</button></div>
+      <p class="muted" style="margin:0">${esc(name)}</p>
+      <div class="quick"><button class="btn" id="asPay">תלוש שכר</button><button class="btn ghost" id="asDoc">מסמך</button></div>`);
+    el.querySelector("#asPay").onclick = ()=>openForm("payslip", null, {}, file);
+    el.querySelector("#asDoc").onclick = ()=>openForm("doc", null, {}, file);
+  } catch(e){}
+}
+
+/* ================= boot ================= */
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+if (clientId() && S.token && Date.now() < S.tokenExp) start();
+})();
+</script>
+</body>
+</html>
