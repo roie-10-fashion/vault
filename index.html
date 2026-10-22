@@ -681,7 +681,7 @@ function openMember(id){
     <div class="sheet-head"><h2>${m.id? "עריכת "+esc(m.name) : "בן/בת משפחה חדש/ה"}</h2><button class="x" data-close aria-label="סגירה">×</button></div>
     <div class="form">
       <div class="field full"><label for="m_name">שם בעברית</label><input id="m_name" value="${esc(m.name)}"></div>
-      <div class="field full"><label for="m_latin">שם באנגלית (כמו בדרכון)</label><input id="m_latin" class="ltr" value="${esc(m.latin)}" placeholder="ROIE COHEN" style="text-transform:uppercase"></div>
+      <div class="field full"><label for="m_latin">שם באנגלית (כמו בדרכון)</label><input id="m_latin" class="ltr" value="${esc(m.latin)}" placeholder="הקלד כאן את השם כמו בדרכון" style="text-transform:uppercase"></div>
       <div class="field full"><label>צבע</label><div class="chips">${COLORS.map(c=>`<button type="button" class="chip" data-col="${c}" aria-pressed="${c===m.color}" style="background:${c};border-color:${c};width:34px;height:34px;padding:0" aria-label="צבע"></button>`).join("")}</div></div>
     </div>
     <div class="actions"><button class="btn" id="mSave">שמירה</button>${m.id && members().length>1 && !used? `<button class="btn danger" id="mDel">הסרה</button>`:""}</div>
