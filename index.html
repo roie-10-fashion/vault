@@ -510,9 +510,9 @@ function openForm(kind, item=null, preset={}, sharedFile=null){
       <div class="field"><label for="f_to">עד תאריך</label><input id="f_to" type="date" value="${v("periodTo")}"></div>
       <div class="field"><label for="f_net">נטו 实发 (¥)</label><input id="f_net" class="ltr" inputmode="decimal" value="${v("net")}"></div>
       <div class="field"><label for="f_tax">מס הכנסה 个税 (¥)</label><input id="f_tax" class="ltr" inputmode="decimal" value="${v("tax")}"></div>
-      <div class="field full"><label for="f_social">ביטוח לאומי 社保 (אם יש)</label><input id="f_social" class="ltr" inputmode="decimal" value="${v("social")}"></div>
+      <div class="field"><label for="f_social">ביטוח לאומי 社保 (אם יש)</label><input id="f_social" class="ltr" inputmode="decimal" value="${v("social")}"></div>
       <div class="field"><label for="f_member">של מי</label><select id="f_member">${memberOpts(sel)}</select></div>
-      <div class="field"><label for="f_employer">מעסיק</label><input id="f_employer" list="dl_emp" autocomplete="off" value="${esc(v("employer", item? "" : (remembered("employer","payslip",sel)[0] || remembered("employer","payslip")[0] || "")))}">${dlist("dl_emp", remembered("employer","payslip"))}</div>
+      <div class="field full"><label for="f_employer">מעסיק</label><input id="f_employer" list="dl_emp" autocomplete="off" value="${esc(v("employer", item? "" : (remembered("employer","payslip",sel)[0] || remembered("employer","payslip")[0] || "")))}">${dlist("dl_emp", remembered("employer","payslip"))}</div>
       ` : `
       <div class="field"><label for="f_category">סוג</label><select id="f_category">${Object.entries(CATS).map(([k,c])=>`<option value="${k}" ${v("category","passport")===k?"selected":""}>${c.he}</option>`).join("")}</select></div>
       <div class="field"><label for="f_member">של מי</label><select id="f_member">${memberOpts(sel)}</select></div>
