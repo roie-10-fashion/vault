@@ -103,6 +103,13 @@ nav.tabs button[aria-current="page"] svg{color:var(--accent)}
 .drop{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .drop label{display:flex;align-items:center;justify-content:center;gap:8px;border:1px dashed var(--line);background:var(--surface);border-radius:12px;padding:14px 8px;font-weight:600;cursor:pointer;text-align:center;position:relative}
 .drop input{position:absolute;opacity:0;width:1px;height:1px}
+.drop.over label,.drop label.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop-hint{grid-column:1/-1;text-align:center;font-size:13px;color:var(--muted);margin-top:-4px}
+.page-drop{position:fixed;inset:12px;z-index:70;border:3px dashed var(--accent);border-radius:20px;background:color-mix(in srgb,var(--bg) 85%,transparent);display:grid;place-items:center;font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--accent);pointer-events:none}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.search input{flex:1;border:0;background:none;padding:12px 0;min-width:0;outline:none}
+.search button{background:none;border:0;color:var(--muted);font-size:18px;padding:4px}
+mark{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 1px}
 .preview{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
 .preview img{width:84px;height:84px;object-fit:cover;border-radius:8px;background:var(--surface-2)}
 .preview .main{min-width:0}
@@ -323,7 +330,7 @@ function payRow(it){
     <span class="main"><span class="t">תלוש ${MONTHS[it.month-1]} ${it.year}</span><span class="s">${esc(m.name)}${it.employer? " · "+esc(it.employer):""}</span></span>
     <span class="count"><span class="num" style="font-size:15px">${money(it.net)}</span></span></button>`;
 }
-function viewHome(){
+function viewHome(bodyOnly){
   const all = items(), docs = all.filter(i=>i.kind==="doc");
   const soon = docs.filter(i=>{const c=countdown(i.expiry); return c && c.days<=120;}).sort((a,b)=>a.expiry.localeCompare(b.expiry));
   const now = new Date(), y = now.getFullYear(), curM = now.getMonth()+1;
@@ -332,12 +339,7 @@ function viewHome(){
   const missing = []; for(let yy=START_YEAR; yy<=y; yy++) for(let m=(yy===START_YEAR?START_MONTH:1); m<=(yy===y?curM-1:12); m++) if(!have.has(yy+"-"+m)) missing.push([yy,m]);
   const recent = [...all].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,4);
   const h = now.getHours(), greet = h<12?"בוקר טוב":h<18?"צהריים טובים":"ערב טוב";
-  return `
-  <div class="top"><div><div class="eyebrow">${greet}</div><h1>הכספת שלי</h1></div></div>
-  <div class="quick">
-    <button class="btn" data-add="payslip">${icon('<path d="M12 5v14M5 12h14"/>',18)}תלוש שכר</button>
-    <button class="btn ghost" data-add="doc">${icon('<path d="M12 5v14M5 12h14"/>',18)}מסמך</button>
-  </div>
+  const sections = `
   <div class="section"><div class="sec-head"><h2>פג בקרוב</h2><button class="link" data-go="docs">לכל המסמכים</button></div>
     ${soon.length? `<div class="list">${soon.map(docRow).join("")}</div>` : `<div class="empty">אין מסמכים שפגים ב-4 החודשים הקרובים.</div>`}</div>
   <div class="section"><div class="sec-head"><h2>תלושים חסרים</h2><button class="link" data-go="pay">לכל התלושים</button></div>
@@ -345,7 +347,16 @@ function viewHome(){
       <div class="chips" style="flex-wrap:wrap">${missing.map(([yy,m])=>`<button class="chip" data-addmonth="${m}" data-addyear="${yy}">${MONTHS[m-1]} ${String(yy).slice(2)}</button>`).join("")}</div></div>`
       : `<div class="empty">כל התלושים מאז ${MONTHS[START_MONTH-1]} ${START_YEAR} נמצאים בכספת.</div>`}</div>
   <div class="section"><h2>נוספו לאחרונה</h2>
-    ${recent.length? `<div class="list">${recent.map(it=> it.kind==="doc"? docRow(it) : payRow(it)).join("")}</div>` : `<div class="empty">עוד לא הוספת כלום. צלם תלוש או מסמך כדי להתחיל.</div>`}</div>`;
+    ${recent.length? `<div class="list">${recent.map(it=> it.kind==="doc"? docRow(it) : payRow(it)).join("")}</div>` : `<div class="empty">עוד לא הוספת כלום. צלם תלוש או מסמך, או גרור קובץ לכאן.</div>`}</div>`;
+  if (bodyOnly) return S.q ? searchResults() : sections;
+  return `
+  <div class="top"><div><div class="eyebrow">${greet}</div><h1>הכספת שלי</h1></div></div>
+  <div class="quick">
+    <button class="btn" data-add="payslip">${icon('<path d="M12 5v14M5 12h14"/>',18)}תלוש שכר</button>
+    <button class="btn ghost" data-add="doc">${icon('<path d="M12 5v14M5 12h14"/>',18)}מסמך</button>
+  </div>
+  ${searchBox("q","חיפוש בכל הכספת: דרכון, ספטמבר, 2025, שם…")}
+  <div id="homeBody" style="display:flex;flex-direction:column;gap:22px">${S.q ? searchResults() : sections}</div>`;
 }
 function viewPay(){
   const ms = members(), pm = S.payMember || ms[0]?.id;
@@ -382,18 +393,22 @@ function viewPay(){
     if(its.length){ const it=its[0]; return `<button class="month" data-open="${it.id}"><span class="mn">${MONTHS[k]}</span><span class="mv">${money(it.net)}</span>${it.tax!=null?`<span class="muted small">מס ${money(it.tax)}</span>`:""}</button>`; }
     return `<button class="month miss ${fut?"future":""}" data-addmonth="${m}" data-addyear="${S.year}"><span class="mn">${MONTHS[k]}</span><span class="small">${fut?"עוד לא":"+ הוספת תלוש"}</span></button>`; }).join("")}</div>`;
 }
-function viewDocs(){
+function viewDocs(bodyOnly){
   const ms = members(); let docs = items().filter(i=>i.kind==="doc");
   const used = Object.keys(CATS).filter(c=>docs.some(d=>d.category===c));
   if (S.docMember!=="all") docs = docs.filter(d=>d.member===S.docMember);
   if (S.docCat!=="all") docs = docs.filter(d=>d.category===S.docCat);
+  if (S.dq) docs = docs.filter(d=>matches(d, S.dq));
   docs.sort((a,b)=> (a.expiry||"9999").localeCompare(b.expiry||"9999"));
+  const listHtml = `<div class="muted small">${docs.length} פריטים · מהקרוב לרחוק</div>
+  ${docs.length? `<div class="list">${docs.map(docRow).join("")}</div>` : S.dq? `<div class="empty">לא נמצא מסמך עבור "${esc(S.dq)}".</div>` : `<div class="empty">אין כאן מסמכים עדיין. דרכון, ויזה, אשרת שהייה, רישיון, ביטוח. אפשר גם לגרור קובץ לכאן.</div>`}`;
+  if (bodyOnly) return listHtml;
   return `
   <div class="top"><div><div class="eyebrow">אישי, זיהוי, ביטוחים</div><h1>מסמכים</h1></div><button class="btn" data-add="doc">הוספה</button></div>
   <div class="chips"><button class="chip" data-docmember="all" aria-pressed="${S.docMember==="all"}">כולם</button>${ms.map(m=>`<button class="chip" data-docmember="${m.id}" aria-pressed="${S.docMember===m.id}">${esc(m.name)}</button>`).join("")}</div>
   ${used.length>1? `<div class="chips"><button class="chip" data-doccat="all" aria-pressed="${S.docCat==="all"}">כל הסוגים</button>${used.map(c=>`<button class="chip" data-doccat="${c}" aria-pressed="${S.docCat===c}">${CATS[c].he}</button>`).join("")}</div>`:""}
-  <div class="muted small">${docs.length} פריטים · מהקרוב לרחוק</div>
-  ${docs.length? `<div class="list">${docs.map(docRow).join("")}</div>` : `<div class="empty">אין כאן מסמכים עדיין. דרכון, ויזה, אשרת שהייה, רישיון, ביטוח.</div>`}`;
+  ${searchBox("dq","חיפוש מסמך: שם, סוג, מספר…")}
+  <div id="docsBody" style="display:flex;flex-direction:column;gap:12px">${listHtml}</div>`;
 }
 function viewFamily(){
   const hasKey = !!ls.get("vault.aiKey");
@@ -424,9 +439,16 @@ function bindView(){
   $$("[data-docmember]").forEach(b=>b.onclick=()=>{S.docMember=b.dataset.docmember; render();});
   $$("[data-doccat]").forEach(b=>b.onclick=()=>{S.docCat=b.dataset.doccat; render();});
   $$("[data-editmember]").forEach(b=>b.onclick=()=>openMember(b.dataset.editmember));
+  bindSearch("q", ()=>{ const b=document.getElementById("homeBody"); b.innerHTML = viewHome(true); bindRows(b); });
+  bindSearch("dq", ()=>{ const b=document.getElementById("docsBody"); b.innerHTML = viewDocs(true); bindRows(b); });
   const so=document.getElementById("signout"); if(so) so.onclick=signOut;
   const on=document.getElementById("aiOn"); if(on) on.onclick=()=>{ const k=document.getElementById("aiKey").value.trim(); if(!k.startsWith("sk-")){toast("המפתח לא נראה תקין");return;} ls.set("vault.aiKey",k); render(); toast("הקריאה האוטומטית פעילה"); };
   const off=document.getElementById("aiOff"); if(off) off.onclick=()=>{ ls.set("vault.aiKey",null); render(); };
+}
+function bindRows(root){
+  root.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openItem(b.dataset.open));
+  root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setTab(b.dataset.go));
+  root.querySelectorAll("[data-addmonth]").forEach(b=>b.onclick=()=>openForm("payslip",null,{month:+b.dataset.addmonth, year:+b.dataset.addyear}));
 }
 function setTab(t){ S.tab=t; ls.set("vault.tab",t); render(); window.scrollTo(0,0); }
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -453,6 +475,7 @@ function openForm(kind, item=null, preset={}, sharedFile=null){
     <div class="drop">
       <label>${icon('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>')}צילום<input type="file" id="fCam" accept="image/*" capture="environment"></label>
       <label>${icon('<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>')}קובץ (PDF או תמונה)<input type="file" id="fFile" accept="image/*,application/pdf"></label>
+      <div class="drop-hint">או גרור לכאן קובץ מהמחשב</div>
     </div>
     <div id="pv" class="preview" ${it.fileId?"":"hidden"}><img id="pvImg" alt="" hidden><div class="main"><b id="pvName">${esc(it.fileName||"")}</b><div class="muted small" id="pvSub">${item?"בחר קובץ חדש כדי להחליף":""}</div></div></div>
     <div id="ai" class="ai" hidden></div>
@@ -487,6 +510,10 @@ function openForm(kind, item=null, preset={}, sharedFile=null){
   };
   $("fCam").onchange = e=>{ const f=e.target.files?.[0]; if(f) take(f); };
   $("fFile").onchange = e=>{ const f=e.target.files?.[0]; if(f) take(f); };
+  const dz = el.querySelector(".drop"), sh = el.querySelector(".sheet");
+  sh.addEventListener("dragover", e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.add("over"); });
+  sh.addEventListener("dragleave", e=>{ if(!sh.contains(e.relatedTarget)) dz.classList.remove("over"); });
+  sh.addEventListener("drop", e=>{ e.preventDefault(); e.stopPropagation(); dz.classList.remove("over"); const f=e.dataTransfer?.files?.[0]; if(f) take(f); });
   if (sharedFile) take(sharedFile);
   $("frm").onsubmit = e=>e.preventDefault();
   $("saveBtn").onclick = async ()=>{
@@ -628,13 +655,45 @@ async function handleShared(){
   try {
     const cache = await caches.open("vault-share"); const res = await cache.match("shared-file"); if (!res) return;
     const blob = await res.blob(); const name = decodeURIComponent(res.headers.get("x-name") || "shared"); await cache.delete("shared-file");
-    const file = new File([blob], name, {type: blob.type});
-    const el = openSheet(`<div class="sheet-head"><h2>מה זה?</h2><button class="x" data-close aria-label="סגירה">×</button></div>
-      <p class="muted" style="margin:0">${esc(name)}</p>
-      <div class="quick"><button class="btn" id="asPay">תלוש שכר</button><button class="btn ghost" id="asDoc">מסמך</button></div>`);
-    el.querySelector("#asPay").onclick = ()=>openForm("payslip", null, {}, file);
-    el.querySelector("#asDoc").onclick = ()=>openForm("doc", null, {}, file);
+    askKind(new File([blob], name, {type: blob.type}));
   } catch(e){}
+}
+function askKind(file){
+  const el = openSheet(`<div class="sheet-head"><h2>מה זה?</h2><button class="x" data-close aria-label="סגירה">×</button></div>
+    <p class="muted" style="margin:0">${esc(file.name)}</p>
+    <div class="quick"><button class="btn" id="asPay">תלוש שכר</button><button class="btn ghost" id="asDoc">מסמך</button></div>`);
+  el.querySelector("#asPay").onclick = ()=>openForm("payslip", null, {}, file);
+  el.querySelector("#asDoc").onclick = ()=>openForm("doc", null, {}, file);
+}
+/* drag a file anywhere on the page */
+let dragDepth = 0, dropEl = null;
+const isFileDrag = e => [...(e.dataTransfer?.types||[])].includes("Files");
+window.addEventListener("dragenter", e=>{ if(!S.ready || scrimEl || !isFileDrag(e)) return; dragDepth++; if(!dropEl){ dropEl=document.createElement("div"); dropEl.className="page-drop"; dropEl.textContent="שחרר כאן כדי להוסיף לכספת"; document.body.appendChild(dropEl);} });
+window.addEventListener("dragleave", e=>{ if(!dropEl) return; if(--dragDepth<=0){ dropEl.remove(); dropEl=null; dragDepth=0; } });
+window.addEventListener("dragover", e=>{ if(isFileDrag(e)) e.preventDefault(); });
+window.addEventListener("drop", e=>{ if(!isFileDrag(e)) return; e.preventDefault(); if(dropEl){dropEl.remove(); dropEl=null;} dragDepth=0;
+  if (!S.ready || scrimEl) return; const f=e.dataTransfer.files[0]; if(f) askKind(f); });
+
+/* ================= search ================= */
+const norm = t => String(t??"").toLowerCase();
+function itemText(it){
+  const m = member(it.member);
+  if (it.kind==="payslip") return [ "תלוש", "שכר", MONTHS[it.month-1], it.month, it.year, `${it.month}/${it.year}`, m.name, it.employer, it.net, it.notes, it.fileName ].join(" ");
+  return [ it.title, (CATS[it.category]||CATS.other).he, m.name, m.latin, it.number, it.expiry, dmy(it.expiry), it.notes, it.fileName ].join(" ");
+}
+function searchBox(key, ph){ return `<div class="search">${icon('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',18)}<input id="q_${key}" type="search" placeholder="${ph}" value="${esc(S[key]||"")}" autocomplete="off" aria-label="חיפוש"><button id="q_${key}x" aria-label="ניקוי" ${S[key]?"":"hidden"}>×</button></div>`; }
+function bindSearch(key, onChange){
+  const inp = document.getElementById("q_"+key); if(!inp) return;
+  const clr = document.getElementById("q_"+key+"x");
+  inp.oninput = ()=>{ S[key] = inp.value; clr.hidden = !S[key]; onChange(); };
+  clr.onclick = ()=>{ S[key]=""; inp.value=""; clr.hidden=true; onChange(); inp.focus(); };
+}
+const matches = (it, q) => { const words = norm(q).split(/\s+/).filter(Boolean); const t = norm(itemText(it)); return words.every(w=>t.includes(w)); };
+function searchResults(){
+  const hits = items().filter(it=>matches(it, S.q))
+    .sort((a,b)=> a.kind===b.kind ? (b.year||0)-(a.year||0) || (b.month||0)-(a.month||0) : a.kind==="doc"?-1:1);
+  return hits.length ? `<div class="muted small">${hits.length} תוצאות</div><div class="list">${hits.map(it=> it.kind==="doc"? docRow(it) : payRow(it)).join("")}</div>`
+                     : `<div class="empty">לא נמצא כלום עבור "${esc(S.q)}". אפשר לחפש לפי שם, סוג מסמך, חודש, שנה, מספר או מעסיק.</div>`;
 }
 
 /* ================= boot ================= */
